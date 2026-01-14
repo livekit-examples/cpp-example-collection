@@ -68,6 +68,8 @@ jobs:
       - name: Configure (Unix)
         if: runner.os != 'Windows'
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -eux
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
