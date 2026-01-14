@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 env:
-  # Used by LiveKitSDK.cmake when VERSION=latest (it looks for env GITHUB_TOKEN by default)
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
@@ -58,7 +57,12 @@ jobs:
         run: |
           choco install -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'
           choco install -y ninja
-          # curl is available on windows-latest; no need for jq/unzip since CMake does the download/extract.
+
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
 
       # ---------- configure + build ----------
       - name: Configure (Unix)
@@ -66,8 +70,7 @@ jobs:
         shell: bash
         run: |
           set -eux
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
       - name: Build (Unix)
         if: runner.os != 'Windows'
@@ -80,7 +83,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER=cl `
+            -DCMAKE_CXX_COMPILER=cl
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
@@ -89,14 +95,11 @@ jobs:
           cmake --build build --config Release
 
       # ---------- smoke test ----------
-      # LiveKitSDK.cmake typically extracts into: build/_deps/livekit-sdk/<bundle-root>
-      # We’ll locate the extracted SDK root robustly and set runtime env vars from it.
       - name: Smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
         run: |
           set -eux
-
           sdk_root="$(ls -d build/_deps/livekit-sdk/* | head -n 1)"
           echo "SDK root: ${sdk_root}"
           ls -la "${sdk_root}/lib" || true
@@ -113,13 +116,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $sdkRoot = Get-ChildItem -Directory "build\_deps\livekit-sdk" | Select-Object -First 1
-          if (-not $sdkRoot) { throw "SDK root not found under build\_deps\livekit-sdk" }
+          $sdkRoot = Get-ChildItem -Directory "build/_deps/livekit-sdk" | Select-Object -First 1
+          if (-not $sdkRoot) { throw "SDK root not found under build/_deps/livekit-sdk" }
           Write-Host "SDK root: $($sdkRoot.FullName)"
 
-          # Prefer bin first; keep lib too (some packages put dlls in lib)
           $env:PATH = "$($sdkRoot.FullName)\bin;$($sdkRoot.FullName)\lib;$env:PATH"
-
           .\build\basic_room.exe --help 2>$null
 
       # ---------- upload build output ----------
