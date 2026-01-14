@@ -65,20 +65,32 @@ function(_lk_resolve_latest_version out_version repo download_dir github_token)
   file(MAKE_DIRECTORY "${download_dir}")
 
   set(_api "https://api.github.com/repos/${repo}/releases/latest")
-  set(_json "${download_dir}/livekit_latest_release_${repo}.json")
-  string(REPLACE "/" "_" _json "${_json}") # sanitize filename
 
-  set(_headers "User-Agent: cmake-livekit-sdk/1.0")
+  # Sanitize only the repo part (NOT the whole path)
+  string(REPLACE "/" "_" _repo_sanitized "${repo}")
+  set(_json "${download_dir}/livekit_latest_release_${_repo_sanitized}.json")
+
+  # Build headers as a proper argument list (quoted per header)
+  set(_headers
+    "User-Agent: cmake-livekit-sdk/1.0"
+    "Accept: application/vnd.github+json"
+  )
   if(NOT "${github_token}" STREQUAL "")
     list(APPEND _headers "Authorization: Bearer ${github_token}")
   endif()
 
-  file(DOWNLOAD
-    "${_api}" "${_json}"
+  # Pass headers safely: keep each header as ONE argument
+  set(_download_args
     TLS_VERIFY ON
-    HTTPHEADER ${_headers}
     STATUS _st
   )
+  list(APPEND _download_args HTTPHEADER)
+  foreach(h IN LISTS _headers)
+    list(APPEND _download_args "${h}")
+  endforeach()
+
+  file(DOWNLOAD "${_api}" "${_json}" ${_download_args})
+
   list(GET _st 0 _code)
   list(GET _st 1 _msg)
   if(NOT _code EQUAL 0)
@@ -103,6 +115,7 @@ function(_lk_resolve_latest_version out_version repo download_dir github_token)
   string(REGEX REPLACE "^v" "" _ver "${_tag}")
   set(${out_version} "${_ver}" PARENT_SCOPE)
 endfunction()
+
 
 # Public:
 # livekit_sdk_setup(
