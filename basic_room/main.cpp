@@ -41,11 +41,16 @@ void printUsage(const char *prog) {
             << "  LIVEKIT_URL, LIVEKIT_TOKEN\n";
 }
 
-bool parseArgs(int argc, char *argv[], std::string &url, std::string &token) {
+bool parseArgs(int argc, char *argv[], std::string &url, std::string &token, bool &self_test) {
   for (int i = 1; i < argc; ++i) {
     const std::string a = argv[i];
     if (a == "-h" || a == "--help")
       return false;
+
+    if (a == "--self-test") {
+      self_test = true;
+      return true;
+    }
 
     auto take = [&](std::string &out) -> bool {
       if (i + 1 >= argc)
@@ -83,9 +88,16 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token) {
 
 int main(int argc, char *argv[]) {
   std::string url, token;
-  if (!parseArgs(argc, argv, url, token)) {
+  bool self_test = false;
+  if (!parseArgs(argc, argv, url, token, self_test)) {
     printUsage(argv[0]);
     return 1;
+  }
+  if (self_test) {
+    livekit::initialize(livekit::LogSink::kConsole);
+    livekit::shutdown();
+    std::cout << "self-test ok" << std::endl;
+    return 0;
   }
 
   std::signal(SIGINT, handleSignal);
