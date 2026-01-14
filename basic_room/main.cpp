@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
   }
 
   // ---- Create & publish VIDEO (fake RGB) ----
-  // Your helper uses LKVideoFrame::create(1280, 720, BGRA), so match that.
+  // Your helper uses VideoFrame::create(1280, 720, BGRA), so match that.
   auto videoSource = std::make_shared<VideoSource>(1280, 720);
   auto videoTrack = LocalVideoTrack::createLocalVideoTrack("rgb", videoSource);
 

@@ -10,8 +10,11 @@
 #   include(LiveKitSDK)
 #   livekit_sdk_setup(VERSION "0.1.9" SDK_DIR "${CMAKE_BINARY_DIR}/_deps/livekit-sdk")
 #
+# Latest:
+#   livekit_sdk_setup(VERSION "latest" SDK_DIR "${CMAKE_BINARY_DIR}/_deps/livekit-sdk")
+#
 # Optional:
-#   livekit_sdk_setup(VERSION "0.1.9" REPO "livekit/client-sdk-cpp" SHA256 "<sha256>")
+#   livekit_sdk_setup(VERSION "latest" REPO "livekit/client-sdk-cpp" GITHUB_TOKEN "$ENV{GITHUB_TOKEN}")
 
 include_guard(GLOBAL)
 
@@ -41,7 +44,6 @@ endfunction()
 
 function(_lk_default_triple out_triple)
   _lk_detect_host(_os _arch)
-
   set(_triple "${_os}-${_arch}")
   set(${out_triple} "${_triple}" PARENT_SCOPE)
 endfunction()
@@ -55,24 +57,72 @@ function(_lk_archive_ext out_ext)
   endif()
 endfunction()
 
+# Resolve VERSION="latest" via GitHub API, returning a version without leading "v".
+function(_lk_resolve_latest_version out_version repo download_dir github_token)
+  if(NOT download_dir)
+    set(download_dir "${CMAKE_BINARY_DIR}/_downloads")
+  endif()
+  file(MAKE_DIRECTORY "${download_dir}")
+
+  set(_api "https://api.github.com/repos/${repo}/releases/latest")
+  set(_json "${download_dir}/livekit_latest_release_${repo}.json")
+  string(REPLACE "/" "_" _json "${_json}") # sanitize filename
+
+  set(_headers "User-Agent: cmake-livekit-sdk/1.0")
+  if(NOT "${github_token}" STREQUAL "")
+    list(APPEND _headers "Authorization: Bearer ${github_token}")
+  endif()
+
+  file(DOWNLOAD
+    "${_api}" "${_json}"
+    TLS_VERIFY ON
+    HTTPHEADER ${_headers}
+    STATUS _st
+  )
+  list(GET _st 0 _code)
+  list(GET _st 1 _msg)
+  if(NOT _code EQUAL 0)
+    message(FATAL_ERROR
+      "LiveKitSDK: failed to query latest release from GitHub API\n"
+      "API: ${_api}\n"
+      "Status: ${_code}\n"
+      "Message: ${_msg}\n"
+      "Tip: set GITHUB_TOKEN to avoid rate limits."
+    )
+  endif()
+
+  file(READ "${_json}" _content)
+
+  # CMake >= 3.19 supports string(JSON ...)
+  string(JSON _tag GET "${_content}" tag_name)
+  if(_tag STREQUAL "")
+    message(FATAL_ERROR "LiveKitSDK: GitHub API response missing tag_name")
+  endif()
+
+  # Strip leading "v" if present (v0.2.0 -> 0.2.0)
+  string(REGEX REPLACE "^v" "" _ver "${_tag}")
+  set(${out_version} "${_ver}" PARENT_SCOPE)
+endfunction()
+
 # Public:
 # livekit_sdk_setup(
-#   VERSION <ver>
+#   VERSION <ver|latest>
 #   SDK_DIR <dir>
 #   [REPO <org/repo>]                 default: livekit/client-sdk-cpp
-#   [SHA256 <hash>]                   optional: verify download
+#   [SHA256 <hash>]                   optional: verify download (only works for fixed VERSION)
 #   [TRIPLE <os-arch>]                optional override
 #   [DOWNLOAD_DIR <dir>]              default: <build>/_downloads
+#   [GITHUB_TOKEN <token>]            optional: auth for GitHub API when VERSION=latest
 #   [NO_DOWNLOAD]                     error if not already present
 # )
 function(livekit_sdk_setup)
   set(options NO_DOWNLOAD)
-  set(oneValueArgs VERSION SDK_DIR REPO SHA256 TRIPLE DOWNLOAD_DIR)
+  set(oneValueArgs VERSION SDK_DIR REPO SHA256 TRIPLE DOWNLOAD_DIR GITHUB_TOKEN)
   set(multiValueArgs)
   cmake_parse_arguments(LK "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   if(NOT LK_VERSION)
-    message(FATAL_ERROR "livekit_sdk_setup: VERSION is required")
+    message(FATAL_ERROR "livekit_sdk_setup: VERSION is required (use \"latest\" if desired)")
   endif()
 
   if(NOT LK_SDK_DIR)
@@ -83,23 +133,41 @@ function(livekit_sdk_setup)
     set(LK_REPO "livekit/client-sdk-cpp")
   endif()
 
+  if(NOT LK_DOWNLOAD_DIR)
+    set(LK_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/_downloads")
+  endif()
+
   if(NOT LK_TRIPLE)
     _lk_default_triple(LK_TRIPLE)
   endif()
 
-  _lk_archive_ext(_ext)
-  set(_archive "livekit-sdk-${LK_TRIPLE}-${LK_VERSION}.${_ext}")
-  set(_url "https://github.com/${LK_REPO}/releases/download/v${LK_VERSION}/${_archive}")
+  # If VERSION is "latest", resolve it first.
+  set(_resolved_version "${LK_VERSION}")
+  if(LK_VERSION STREQUAL "latest")
+    # SHA256 cannot be reliably used with "latest" (changes over time).
+    if(LK_SHA256)
+      message(WARNING "LiveKitSDK: SHA256 was provided but VERSION=latest; ignoring SHA256.")
+      set(LK_SHA256 "")
+    endif()
 
-  if(NOT LK_DOWNLOAD_DIR)
-    set(LK_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/_downloads")
+    if(NOT LK_GITHUB_TOKEN)
+      # Try env var by default (common in GitHub Actions).
+      set(LK_GITHUB_TOKEN "$ENV{GITHUB_TOKEN}")
+    endif()
+
+    _lk_resolve_latest_version(_resolved_version "${LK_REPO}" "${LK_DOWNLOAD_DIR}" "${LK_GITHUB_TOKEN}")
+    message(STATUS "LiveKitSDK: resolved latest version = ${_resolved_version}")
   endif()
+
+  _lk_archive_ext(_ext)
+  set(_archive "livekit-sdk-${LK_TRIPLE}-${_resolved_version}.${_ext}")
+  set(_url "https://github.com/${LK_REPO}/releases/download/v${_resolved_version}/${_archive}")
 
   set(_dl_dir "${LK_DOWNLOAD_DIR}")
   set(_archive_path "${_dl_dir}/${_archive}")
 
   # Extracted root folder name (matches your bundle root)
-  set(_extracted_root "${LK_SDK_DIR}/livekit-sdk-${LK_TRIPLE}-${LK_VERSION}")
+  set(_extracted_root "${LK_SDK_DIR}/livekit-sdk-${LK_TRIPLE}-${_resolved_version}")
 
   file(MAKE_DIRECTORY "${_dl_dir}")
   file(MAKE_DIRECTORY "${LK_SDK_DIR}")
@@ -137,14 +205,10 @@ function(livekit_sdk_setup)
     message(STATUS "LiveKitSDK: extracting ${_archive_path}")
     file(REMOVE_RECURSE "${_extracted_root}")
 
-    execute_process(
-      COMMAND "${CMAKE_COMMAND}" -E tar xvf "${_archive_path}"
-      WORKING_DIRECTORY "${LK_SDK_DIR}"
-      RESULT_VARIABLE _xret
+    file(ARCHIVE_EXTRACT
+      INPUT "${_archive_path}"
+      DESTINATION "${LK_SDK_DIR}"
     )
-    if(NOT _xret EQUAL 0)
-      message(FATAL_ERROR "LiveKitSDK: extraction failed (${_xret}) for ${_archive_path}")
-    endif()
   endif()
 
   if(NOT EXISTS "${_extracted_root}/lib/cmake")
@@ -157,11 +221,16 @@ function(livekit_sdk_setup)
 
   # Make find_package(LiveKit CONFIG REQUIRED) work.
   list(PREPEND CMAKE_PREFIX_PATH "${_extracted_root}")
+  set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
+
+  # Direct hint to the package config dir
+  set(LiveKit_DIR "${_extracted_root}/lib/cmake/LiveKit" PARENT_SCOPE)
 
   # Export a few useful variables for callers (optional).
   set(LIVEKIT_SDK_EXTRACTED_ROOT "${_extracted_root}" CACHE PATH "LiveKit SDK extracted root" FORCE)
   set(LIVEKIT_SDK_URL_USED "${_url}" CACHE STRING "LiveKit SDK URL used" FORCE)
+  set(LIVEKIT_SDK_VERSION_RESOLVED "${_resolved_version}" CACHE STRING "LiveKit SDK resolved version" FORCE)
+  set(LIVEKIT_SDK_TRIPLE_USED "${LK_TRIPLE}" CACHE STRING "LiveKit SDK triple used" FORCE)
 
   message(STATUS "LiveKitSDK: using SDK at ${_extracted_root}")
 endfunction()
-
