@@ -88,7 +88,7 @@ function(_lk_resolve_latest_version out_version repo download_dir github_token)
   # Use Authorization only if token is non-empty
   if(NOT "${github_token}" STREQUAL "")
     # "token" is broadly compatible
-    list(APPEND _headers "Authorization: token ${github_token}")
+    list(APPEND _headers "Authorization: Bearer ${github_token}")
   else()
     message(STATUS "LiveKitSDK: no GITHUB_TOKEN provided; GitHub API may rate-limit.")
   endif()
@@ -99,9 +99,8 @@ function(_lk_resolve_latest_version out_version repo download_dir github_token)
     STATUS _st
     LOG _log
   )
-  list(APPEND _dl_args HTTPHEADER)
   foreach(_h IN LISTS _headers)
-    list(APPEND _dl_args "${_h}")
+    list(APPEND _dl_args HTTPHEADER "${_h}")
   endforeach()
   file(DOWNLOAD "${_api}" "${_json}" ${_dl_args})
 
