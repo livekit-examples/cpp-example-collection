@@ -84,9 +84,21 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token, boo
   return !(url.empty() || token.empty());
 }
 
+void print_livekit_version() {
+  std::cout
+    << "LiveKit version: "
+    << LIVEKIT_BUILD_VERSION_FULL
+    << " (" << LIVEKIT_BUILD_FLAVOR
+    << ", commit " << LIVEKIT_BUILD_COMMIT
+    << ", built " << LIVEKIT_BUILD_DATE
+    << ")"
+    << std::endl;
+}
+
 } // namespace
 
 int main(int argc, char *argv[]) {
+  print_livekit_version();
   std::string url, token;
   bool self_test = false;
   if (!parseArgs(argc, argv, url, token, self_test)) {
