@@ -1,21 +1,66 @@
+# Copyright 2026 LiveKit, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 cmake_minimum_required(VERSION 3.20)
 project(livekit_cpp_example_collection LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Make "include(LiveKitSDK)" search in ./cmake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 set(LIVEKIT_SDK_VERSION "latest" CACHE STRING "LiveKit C++ SDK version (e.g. 0.2.0 or latest)")
+set(LIVEKIT_LOCAL_SDK_DIR "" CACHE PATH "Path to a local LiveKit SDK install prefix (skips download)")
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(LiveKitSDK)
-
-livekit_sdk_setup(
-  VERSION  "${LIVEKIT_SDK_VERSION}"
-  SDK_DIR  "${CMAKE_BINARY_DIR}/_deps/livekit-sdk"
-  GITHUB_TOKEN "$ENV{GITHUB_TOKEN}"
-)
-
+if(LIVEKIT_LOCAL_SDK_DIR)
+  message(STATUS "Using local LiveKit SDK: ${LIVEKIT_LOCAL_SDK_DIR}")
+  list(PREPEND CMAKE_PREFIX_PATH "${LIVEKIT_LOCAL_SDK_DIR}")
+else()
+  include(LiveKitSDK)
+  livekit_sdk_setup(
+    VERSION "${LIVEKIT_SDK_VERSION}"
+    SDK_DIR "${CMAKE_BINARY_DIR}/_deps/livekit-sdk"
+    GITHUB_TOKEN "$ENV{GITHUB_TOKEN}"
+  )
+endif()
 find_package(LiveKit CONFIG REQUIRED)
+
+if(TARGET LiveKit::livekit)
+  set(LIVEKIT_CORE_TARGET LiveKit::livekit)
+elseif(TARGET livekit)
+  set(LIVEKIT_CORE_TARGET livekit)
+else()
+  message(FATAL_ERROR "Could not find a LiveKit core target (expected LiveKit::livekit or livekit).")
+endif()
+
+set(LIVEKIT_DATA_DIR "")
+if(DEFINED LIVEKIT_ROOT_DIR AND EXISTS "${LIVEKIT_ROOT_DIR}/data")
+  set(LIVEKIT_DATA_DIR "${LIVEKIT_ROOT_DIR}/data")
+endif()
+
+include(ExampleDeps)
+
 add_subdirectory(basic_room)
+add_subdirectory(simple_room)
+add_subdirectory(simple_rpc)
+add_subdirectory(simple_data_stream)
+add_subdirectory(logging_levels_basic_usage)
+add_subdirectory(logging_levels_custom_sinks)
+add_subdirectory(hello_livekit_sender)
+add_subdirectory(hello_livekit_receiver)
+add_subdirectory(simple_joystick_sender)
+add_subdirectory(simple_joystick_receiver)
+add_subdirectory(ping_pong_ping)
+add_subdirectory(ping_pong_pong)

@@ -35,6 +35,16 @@ rm -rf build
 cmake -S . -B build -DLIVEKIT_SDK_VERSION=0.3.1
 ```
 
+Build against a local SDK:
+```bash
+rm -rf build
+# install the SDK into $HOME/livekit-sdk-install (or any other directory)
+cmake --install <sdk-build-dir> --prefix $HOME/livekit-sdk-install
+
+# build the examples against the local SDK
+cmake -S . -B build -DLIVEKIT_LOCAL_SDK_DIR=$HOME/livekit-sdk-install
+```
+
 
 ### Building the examples
 #### macOS / Linux

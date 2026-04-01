@@ -41,7 +41,8 @@ void printUsage(const char *prog) {
             << "  LIVEKIT_URL, LIVEKIT_TOKEN\n";
 }
 
-bool parseArgs(int argc, char *argv[], std::string &url, std::string &token, bool &self_test) {
+bool parseArgs(int argc, char *argv[], std::string &url, std::string &token,
+               bool &self_test) {
   for (int i = 1; i < argc; ++i) {
     const std::string a = argv[i];
     if (a == "-h" || a == "--help")
@@ -85,14 +86,9 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token, boo
 }
 
 void print_livekit_version() {
-  std::cout
-    << "LiveKit version: "
-    << LIVEKIT_BUILD_VERSION_FULL
-    << " (" << LIVEKIT_BUILD_FLAVOR
-    << ", commit " << LIVEKIT_BUILD_COMMIT
-    << ", built " << LIVEKIT_BUILD_DATE
-    << ")"
-    << std::endl;
+  std::cout << "LiveKit version: " << LIVEKIT_BUILD_VERSION_FULL << " ("
+            << LIVEKIT_BUILD_FLAVOR << ", commit " << LIVEKIT_BUILD_COMMIT
+            << ", built " << LIVEKIT_BUILD_DATE << ")" << std::endl;
 }
 
 } // namespace
@@ -106,7 +102,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   if (self_test) {
-    livekit::initialize(livekit::LogSink::kConsole);
+    livekit::initialize(livekit::LogLevel::Info, livekit::LogSink::kConsole);
     livekit::shutdown();
     std::cout << "self-test ok" << std::endl;
     return 0;
@@ -115,7 +111,7 @@ int main(int argc, char *argv[]) {
   std::signal(SIGINT, handleSignal);
 
   // Init LiveKit
-  livekit::initialize(livekit::LogSink::kConsole);
+  livekit::initialize(livekit::LogLevel::Info, livekit::LogSink::kConsole);
 
   auto room = std::make_unique<Room>();
 
@@ -145,7 +141,8 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<LocalTrackPublication> audioPub;
   try {
-    audioPub = room->localParticipant()->publishTrack(audioTrack, audioOpts);
+    room->localParticipant()->publishTrack(audioTrack, audioOpts);
+    audioPub = audioTrack->publication();
     std::cout << "Published audio: sid=" << audioPub->sid() << "\n";
   } catch (const std::exception &e) {
     std::cerr << "Failed to publish audio: " << e.what() << "\n";
@@ -163,7 +160,8 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<LocalTrackPublication> videoPub;
   try {
-    videoPub = room->localParticipant()->publishTrack(videoTrack, videoOpts);
+    room->localParticipant()->publishTrack(videoTrack, videoOpts);
+    videoPub = videoTrack->publication();
     std::cout << "Published video: sid=" << videoPub->sid() << "\n";
   } catch (const std::exception &e) {
     std::cerr << "Failed to publish video: " << e.what() << "\n";
