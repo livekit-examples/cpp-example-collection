@@ -7,11 +7,29 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  license-check:
+    name: License Check
+    uses: ./.github/workflows/license_check.yml
+    permissions:
+      contents: read
+
+  pin-check:
+    name: Pin Check
+    uses: ./.github/workflows/pin_check.yml
+    permissions:
+      contents: read
+
   build:
+    needs:
+      - license-check
+      - pin-check
     strategy:
       fail-fast: false
       matrix:
@@ -25,10 +43,12 @@ jobs:
 
     name: Build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       # ---------- deps ----------
       - name: Install deps (Ubuntu)
@@ -68,7 +88,7 @@ jobs:
 
       - name: Setup MSVC (Windows)
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         with:
           arch: x64
 
@@ -159,7 +179,7 @@ jobs:
 
       # ---------- upload build output ----------
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: basic_room-${{ matrix.name }}
           path: |
