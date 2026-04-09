@@ -17,10 +17,14 @@ jobs:
   license-check:
     name: License Check
     uses: ./.github/workflows/license_check.yml
+    permissions:
+      contents: read
 
   pin-check:
     name: Pin Check
     uses: ./.github/workflows/pin_check.yml
+    permissions:
+      contents: read
 
   build:
     strategy:
