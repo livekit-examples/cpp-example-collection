@@ -50,6 +50,35 @@ if(DEFINED LIVEKIT_ROOT_DIR AND EXISTS "${LIVEKIT_ROOT_DIR}/data")
   set(LIVEKIT_DATA_DIR "${LIVEKIT_ROOT_DIR}/data")
 endif()
 
+function(livekit_copy_windows_runtime_dlls target_name)
+  if(NOT WIN32)
+    return()
+  endif()
+
+  get_filename_component(_lk_cmake_parent "${LiveKit_DIR}" DIRECTORY)
+  get_filename_component(_lk_lib_dir "${_lk_cmake_parent}" DIRECTORY)
+  get_filename_component(_lk_prefix "${_lk_lib_dir}" DIRECTORY)
+  set(_lk_bin_dir "${_lk_prefix}/bin")
+
+  foreach(_lk_runtime_dll IN ITEMS livekit.dll livekit_ffi.dll)
+    if(EXISTS "${_lk_bin_dir}/${_lk_runtime_dll}")
+      add_custom_command(TARGET ${target_name} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${_lk_bin_dir}/${_lk_runtime_dll}"
+                "$<TARGET_FILE_DIR:${target_name}>"
+      )
+    endif()
+  endforeach()
+
+  if(TARGET SDL3::SDL3)
+    add_custom_command(TARGET ${target_name} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+              "$<TARGET_FILE:SDL3::SDL3>"
+              "$<TARGET_FILE_DIR:${target_name}>"
+    )
+  endif()
+endfunction()
+
 include(ExampleDeps)
 
 add_subdirectory(basic_room)
@@ -64,3 +93,16 @@ add_subdirectory(simple_joystick_sender)
 add_subdirectory(simple_joystick_receiver)
 add_subdirectory(ping_pong_ping)
 add_subdirectory(ping_pong_pong)
+
+livekit_copy_windows_runtime_dlls(basic_room)
+livekit_copy_windows_runtime_dlls(SimpleRoom)
+livekit_copy_windows_runtime_dlls(SimpleRpc)
+livekit_copy_windows_runtime_dlls(SimpleDataStream)
+livekit_copy_windows_runtime_dlls(LoggingLevelsBasicUsage)
+livekit_copy_windows_runtime_dlls(LoggingLevelsCustomSinks)
+livekit_copy_windows_runtime_dlls(HelloLivekitSender)
+livekit_copy_windows_runtime_dlls(HelloLivekitReceiver)
+livekit_copy_windows_runtime_dlls(SimpleJoystickSender)
+livekit_copy_windows_runtime_dlls(SimpleJoystickReceiver)
+livekit_copy_windows_runtime_dlls(PingPongPing)
+livekit_copy_windows_runtime_dlls(PingPongPong)
