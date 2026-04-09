@@ -29,3 +29,5 @@ add_executable(PingPongPing
 
 target_include_directories(PingPongPing PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(PingPongPing PRIVATE ping_pong_ping_support ${LIVEKIT_CORE_TARGET})
+
+livekit_copy_windows_runtime_dlls(PingPongPing)

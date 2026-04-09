@@ -18,3 +18,5 @@ add_executable(HelloLivekitSender
 
 target_include_directories(HelloLivekitSender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(HelloLivekitSender PRIVATE ${LIVEKIT_CORE_TARGET})
+
+livekit_copy_windows_runtime_dlls(HelloLivekitSender)

@@ -19,6 +19,8 @@ add_executable(SimpleDataStream
 target_include_directories(SimpleDataStream PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(SimpleDataStream PRIVATE ${LIVEKIT_CORE_TARGET})
 
+livekit_copy_windows_runtime_dlls(SimpleDataStream)
+
 if(LIVEKIT_DATA_DIR)
   add_custom_command(TARGET SimpleDataStream POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory

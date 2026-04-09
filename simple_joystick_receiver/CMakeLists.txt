@@ -28,3 +28,5 @@ add_executable(SimpleJoystickReceiver
 
 target_include_directories(SimpleJoystickReceiver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(SimpleJoystickReceiver PRIVATE simple_joystick_receiver_support ${LIVEKIT_CORE_TARGET})
+
+livekit_copy_windows_runtime_dlls(SimpleJoystickReceiver)

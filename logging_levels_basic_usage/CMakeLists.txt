@@ -18,3 +18,5 @@ add_executable(LoggingLevelsBasicUsage
 
 target_include_directories(LoggingLevelsBasicUsage PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(LoggingLevelsBasicUsage PRIVATE ${LIVEKIT_CORE_TARGET})
+
+livekit_copy_windows_runtime_dlls(LoggingLevelsBasicUsage)

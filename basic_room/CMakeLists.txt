@@ -27,18 +27,10 @@ get_filename_component(_lk_lib_dir  "${_lk_cmake_dir}" DIRECTORY) # .../lib
 target_link_directories(basic_room PRIVATE "${_lk_lib_dir}")
 
 
-# Nice-to-have: copy runtime DLLs next to the exe on Windows for "run from build dir".
-# Only do this if your exported package provides these targets.
+# Nice-to-have: copy extra runtime DLLs next to the exe on Windows for "run from build dir".
+# The common LiveKit runtime copies are handled by livekit_copy_windows_runtime_dlls()
+# in this target's directory below.
 if(WIN32)
-  # livekit_ffi.dll
-  if(TARGET LiveKit::livekit_ffi)
-    add_custom_command(TARGET basic_room POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "$<TARGET_FILE:LiveKit::livekit_ffi>"
-        "$<TARGET_FILE_DIR:basic_room>"
-    )
-  endif()
-
   # If you also export protobuf/abseil runtime targets, copy them too (optional).
   if(TARGET protobuf::libprotobuf)
     add_custom_command(TARGET basic_room POST_BUILD
@@ -53,6 +45,8 @@ if(WIN32)
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "$<TARGET_FILE:absl::abseil_dll>"
         "$<TARGET_FILE_DIR:basic_room>"
-    )
+      )
   endif()
 endif()
+
+livekit_copy_windows_runtime_dlls(basic_room)

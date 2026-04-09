@@ -18,3 +18,5 @@ add_executable(LoggingLevelsCustomSinks
 
 target_include_directories(LoggingLevelsCustomSinks PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(LoggingLevelsCustomSinks PRIVATE ${LIVEKIT_CORE_TARGET})
+
+livekit_copy_windows_runtime_dlls(LoggingLevelsCustomSinks)

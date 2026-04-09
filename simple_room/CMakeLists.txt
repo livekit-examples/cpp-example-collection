@@ -15,6 +15,8 @@ add_executable(SimpleRoom
 target_include_directories(SimpleRoom PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(SimpleRoom PRIVATE ${LIVEKIT_CORE_TARGET} SDL3::SDL3)
 
+livekit_copy_windows_runtime_dlls(SimpleRoom)
+
 if(LIVEKIT_DATA_DIR)
   add_custom_command(TARGET SimpleRoom POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory

@@ -18,3 +18,5 @@ add_executable(SimpleRpc
 
 target_include_directories(SimpleRpc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(SimpleRpc PRIVATE nlohmann_json::nlohmann_json ${LIVEKIT_CORE_TARGET})
+
+livekit_copy_windows_runtime_dlls(SimpleRpc)
