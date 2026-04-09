@@ -27,6 +27,9 @@ jobs:
       contents: read
 
   build:
+    needs:
+      - license-check
+      - pin-check
     strategy:
       fail-fast: false
       matrix:
