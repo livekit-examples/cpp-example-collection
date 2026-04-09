@@ -31,7 +31,7 @@ jobs:
         run: |
           shopt -s globstar nullglob
           # ghcr.io/google/addlicense v1.2.0
-          docker run --rm -v ${PWD}:/src -w /src ghcr.io/google/addlicense@sha256:5a48f41ccc8cf3fdd04499649f02a9ee5877ab6f39fd1ac18fd1db5eb1062c5a \
+          docker run --rm -v "${PWD}:/src" -w /src ghcr.io/google/addlicense@sha256:5a48f41ccc8cf3fdd04499649f02a9ee5877ab6f39fd1ac18fd1db5eb1062c5a \
             -check \
             -l apache \
             **/*.{cpp,h,hpp}
