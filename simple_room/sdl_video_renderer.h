@@ -20,10 +20,12 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <thread>
 
 namespace livekit {
 class VideoStream;
+struct VideoFrameEvent;
 }
 
 class SDLVideoRenderer {
@@ -43,12 +45,20 @@ public:
   void shutdown(); // destroy window/renderer/texture
 
 private:
-  SDL_Window* window_ = nullptr;
-  SDL_Renderer* renderer_ = nullptr;
-  SDL_Texture* texture_ = nullptr;
+  SDL_Window *window_ = nullptr;
+  SDL_Renderer *renderer_ = nullptr;
+  SDL_Texture *texture_ = nullptr;
+  SDL_PixelFormat texture_format_ = SDL_PIXELFORMAT_UNKNOWN;
 
   std::shared_ptr<livekit::VideoStream> stream_;
+  std::unique_ptr<livekit::VideoFrameEvent> latest_frame_;
+  std::mutex latest_frame_lock_;
+  std::thread reader_thread_;
+  std::atomic<bool> reader_running_{false};
   int width_ = 0;
   int height_ = 0;
   std::chrono::steady_clock::time_point last_render_time_{};
+
+  void stopReader();
+  void readerLoop(std::shared_ptr<livekit::VideoStream> stream);
 };

@@ -16,14 +16,20 @@
 
 #include "sdl_video_renderer.h"
 
+#include "livekit/livekit.h"
 #include <cstring>
 #include <iostream>
-
-#include "livekit/livekit.h"
 
 using namespace livekit;
 
 constexpr int kMaxFPS = 60;
+
+SDL_PixelFormat textureFormatFor(livekit::VideoBufferType type) {
+  if (type == livekit::VideoBufferType::I420) {
+    return SDL_PIXELFORMAT_IYUV;
+  }
+  return SDL_PIXELFORMAT_RGBA32;
+}
 
 SDLVideoRenderer::SDLVideoRenderer() = default;
 
@@ -46,21 +52,24 @@ bool SDLVideoRenderer::init(const char* title, int width, int height) {
     return false;
   }
 
-  // Note, web will send out BGRA as default, and we can't use ARGB since ffi
-  // does not support converting from BGRA to ARGB.
-  texture_ = SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, width_, height_);
+  texture_ = SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_RGBA32,
+                               SDL_TEXTUREACCESS_STREAMING, width_, height_);
   if (!texture_) {
     std::cerr << "[error] SDL_CreateTexture failed: " << SDL_GetError() << "\n";
     return false;
   }
+  texture_format_ = SDL_PIXELFORMAT_RGBA32;
 
   return true;
 }
 
 void SDLVideoRenderer::shutdown() {
+  stopReader();
+
   if (texture_) {
     SDL_DestroyTexture(texture_);
     texture_ = nullptr;
+    texture_format_ = SDL_PIXELFORMAT_UNKNOWN;
   }
   if (renderer_) {
     SDL_DestroyRenderer(renderer_);
@@ -71,10 +80,46 @@ void SDLVideoRenderer::shutdown() {
     window_ = nullptr;
   }
 
+  {
+    std::lock_guard<std::mutex> lock(latest_frame_lock_);
+    latest_frame_.reset();
+  }
+}
+
+void SDLVideoRenderer::setStream(std::shared_ptr<livekit::VideoStream> stream) {
+  stopReader();
+  stream_ = std::move(stream);
+  if (!stream_) {
+    return;
+  }
+
+  reader_running_.store(true, std::memory_order_relaxed);
+  reader_thread_ = std::thread(&SDLVideoRenderer::readerLoop, this, stream_);
+}
+
+void SDLVideoRenderer::stopReader() {
+  reader_running_.store(false, std::memory_order_relaxed);
+  if (stream_) {
+    stream_->close();
+  }
+  if (reader_thread_.joinable()) {
+    reader_thread_.join();
+  }
   stream_.reset();
 }
 
-void SDLVideoRenderer::setStream(std::shared_ptr<livekit::VideoStream> stream) { stream_ = std::move(stream); }
+void SDLVideoRenderer::readerLoop(
+    std::shared_ptr<livekit::VideoStream> stream) {
+  while (reader_running_.load(std::memory_order_relaxed)) {
+    auto event = std::make_unique<livekit::VideoFrameEvent>();
+    if (!stream->read(*event)) {
+      break;
+    }
+
+    std::lock_guard<std::mutex> lock(latest_frame_lock_);
+    latest_frame_ = std::move(event);
+  }
+}
 
 void SDLVideoRenderer::render() {
   // 0) Basic sanity
@@ -90,11 +135,6 @@ void SDLVideoRenderer::render() {
     }
   }
 
-  // 2) If no stream, nothing to render
-  if (!stream_) {
-    return;
-  }
-
   // Throttle rendering to kMaxFPS
   const auto now = std::chrono::steady_clock::now();
   if (last_render_time_.time_since_epoch().count() != 0) {
@@ -103,68 +143,115 @@ void SDLVideoRenderer::render() {
       return;
     }
   }
-  last_render_time_ = now;
-
-  // 3) Read a frame from VideoStream (blocking until one is available)
-  livekit::VideoFrameEvent vfe;
-  bool gotFrame = stream_->read(vfe);
-  if (!gotFrame) {
-    // EOS / closed – nothing more to render
-    return;
+  std::unique_ptr<livekit::VideoFrameEvent> latest_frame;
+  {
+    std::lock_guard<std::mutex> lock(latest_frame_lock_);
+    latest_frame.swap(latest_frame_);
   }
 
-  livekit::VideoFrame& frame = vfe.frame;
+  if (!latest_frame) {
+    return;
+  }
+  last_render_time_ = now;
 
-  // 4) Ensure the frame is RGBA.
-  //    Ideally you requested RGBA from VideoStream::Options so this is a no-op.
-  if (frame.type() != livekit::VideoBufferType::RGBA) {
+  livekit::VideoFrame &frame = latest_frame->frame;
+
+  if (frame.type() != livekit::VideoBufferType::RGBA &&
+      frame.type() != livekit::VideoBufferType::I420) {
     try {
       frame = frame.convert(livekit::VideoBufferType::RGBA, false);
-    } catch (const std::exception& ex) {
-      std::cerr << "[error] SDLVideoRenderer: convert to RGBA failed: " << ex.what() << "\n";
+    } catch (const std::exception &ex) {
+      std::cerr << "[error] SDLVideoRenderer: convert to RGBA failed: "
+                << ex.what() << "\n";
       return;
     }
   }
 
-  // Handle size change: recreate texture if needed
-  if (frame.width() != width_ || frame.height() != height_) {
+  const SDL_PixelFormat frame_texture_format = textureFormatFor(frame.type());
+  if (frame.width() != width_ || frame.height() != height_ ||
+      frame_texture_format != texture_format_) {
     width_ = frame.width();
     height_ = frame.height();
+    texture_format_ = frame_texture_format;
 
     if (texture_) {
       SDL_DestroyTexture(texture_);
       texture_ = nullptr;
     }
-    texture_ = SDL_CreateTexture(renderer_,
-                                 SDL_PIXELFORMAT_RGBA32, // Note, SDL_PIXELFORMAT_RGBA8888 is not
-                                                         // compatible with Livekit RGBA format.
+    texture_ = SDL_CreateTexture(renderer_, texture_format_,
                                  SDL_TEXTUREACCESS_STREAMING, width_, height_);
     if (!texture_) {
-      std::cerr << "[error] SDLVideoRenderer: SDL_CreateTexture failed: " << SDL_GetError() << "\n";
+      std::cerr << "[error] SDLVideoRenderer: SDL_CreateTexture failed: "
+                << SDL_GetError() << "\n";
       return;
     }
   }
 
-  // 6) Upload RGBA data to SDL texture
-  void* pixels = nullptr;
-  int pitch = 0;
-  if (!SDL_LockTexture(texture_, nullptr, &pixels, &pitch)) {
-    std::cerr << "[error] SDLVideoRenderer: SDL_LockTexture failed: " << SDL_GetError() << "\n";
-    return;
+  if (frame.type() == livekit::VideoBufferType::I420) {
+    const int chroma_width = (frame.width() + 1) / 2;
+    const int chroma_height = (frame.height() + 1) / 2;
+    const std::size_t y_size =
+        static_cast<std::size_t>(frame.width()) * frame.height();
+    const std::size_t chroma_size =
+        static_cast<std::size_t>(chroma_width) * chroma_height;
+    if (frame.dataSize() < y_size + 2 * chroma_size) {
+      std::cerr << "[error] SDLVideoRenderer: I420 frame buffer is too small\n";
+      return;
+    }
+    const std::uint8_t *y_plane = frame.data();
+    const std::uint8_t *u_plane = y_plane + y_size;
+    const std::uint8_t *v_plane = u_plane + chroma_size;
+    if (!SDL_UpdateYUVTexture(texture_, nullptr, y_plane, frame.width(),
+                              u_plane, chroma_width, v_plane,
+                              chroma_width)) {
+      std::cerr << "[error] SDLVideoRenderer: SDL_UpdateYUVTexture failed: "
+                << SDL_GetError() << "\n";
+      return;
+    }
+  } else {
+    void *pixels = nullptr;
+    int pitch = 0;
+    if (!SDL_LockTexture(texture_, nullptr, &pixels, &pitch)) {
+      std::cerr << "[error] SDLVideoRenderer: SDL_LockTexture failed: "
+                << SDL_GetError() << "\n";
+      return;
+    }
+
+    const std::uint8_t *src = frame.data();
+    const int src_pitch = frame.width() * 4;
+
+    for (int y = 0; y < frame.height(); ++y) {
+      std::memcpy(static_cast<std::uint8_t *>(pixels) + y * pitch,
+                  src + y * src_pitch, src_pitch);
+    }
+
+    SDL_UnlockTexture(texture_);
   }
 
-  const std::uint8_t* src = frame.data();
-  const int srcPitch = frame.width() * 4; // RGBA: 4 bytes per pixel
+  int window_width = width_;
+  int window_height = height_;
+  SDL_GetWindowSize(window_, &window_width, &window_height);
 
-  for (int y = 0; y < frame.height(); ++y) {
-    std::memcpy(static_cast<std::uint8_t*>(pixels) + y * pitch, src + y * srcPitch, srcPitch);
+  const float frame_aspect =
+      static_cast<float>(frame.width()) / static_cast<float>(frame.height());
+  const float window_aspect =
+      static_cast<float>(window_width) / static_cast<float>(window_height);
+  SDL_FRect destination{};
+  if (window_aspect > frame_aspect) {
+    destination.h = static_cast<float>(window_height);
+    destination.w = destination.h * frame_aspect;
+    destination.x = (static_cast<float>(window_width) - destination.w) / 2.0F;
+    destination.y = 0.0F;
+  } else {
+    destination.w = static_cast<float>(window_width);
+    destination.h = destination.w / frame_aspect;
+    destination.x = 0.0F;
+    destination.y =
+        (static_cast<float>(window_height) - destination.h) / 2.0F;
   }
 
-  SDL_UnlockTexture(texture_);
-
-  // 7) Present
   SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
   SDL_RenderClear(renderer_);
-  SDL_RenderTexture(renderer_, texture_, nullptr, nullptr);
+  SDL_RenderTexture(renderer_, texture_, nullptr, &destination);
   SDL_RenderPresent(renderer_);
 }
