@@ -27,6 +27,7 @@
 #include "livekit/livekit.h"
 
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
