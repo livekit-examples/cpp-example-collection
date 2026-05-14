@@ -25,6 +25,7 @@
 #include "utils.h"
 
 #include <atomic>
+#include <cassert>
 #include <csignal>
 #include <cstdint>
 #include <exception>
