@@ -35,7 +35,7 @@ std::atomic<bool> g_sender_connected{false};
 
 void handleSignal(int) { g_running.store(false); }
 
-void printUsage(const char *prog) {
+void printUsage(const char* prog) {
   std::cerr << "Usage:\n"
             << "  " << prog << " <ws-url> <token>\n"
             << "or:\n"
@@ -49,7 +49,7 @@ void printUsage(const char *prog) {
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   std::string url, token;
   if (!simple_joystick::parseArgs(argc, argv, url, token)) {
     printUsage(argv[0]);
@@ -78,22 +78,19 @@ int main(int argc, char *argv[]) {
   std::cout << "[Receiver] Waiting for sender peer (up to 2 minutes)...\n";
 
   // Register RPC handler for joystick commands
-  LocalParticipant *lp = room->localParticipant();
-  lp->registerRpcMethod(
-      "joystick_command",
-      [](const RpcInvocationData &data) -> std::optional<std::string> {
-        try {
-          auto cmd = simple_joystick::json_to_joystick(data.payload);
-          g_sender_connected.store(true);
-          std::cout << "[Receiver] Joystick from '" << data.caller_identity
-                    << "': x=" << cmd.x << " y=" << cmd.y << " z=" << cmd.z
-                    << "\n";
-          return std::optional<std::string>{"ok"};
-        } catch (const std::exception &e) {
-          std::cerr << "[Receiver] Bad joystick payload: " << e.what() << "\n";
-          throw;
-        }
-      });
+  LocalParticipant* lp = room->localParticipant();
+  lp->registerRpcMethod("joystick_command", [](const RpcInvocationData& data) -> std::optional<std::string> {
+    try {
+      auto cmd = simple_joystick::json_to_joystick(data.payload);
+      g_sender_connected.store(true);
+      std::cout << "[Receiver] Joystick from '" << data.caller_identity << "': x=" << cmd.x << " y=" << cmd.y
+                << " z=" << cmd.z << "\n";
+      return std::optional<std::string>{"ok"};
+    } catch (const std::exception& e) {
+      std::cerr << "[Receiver] Bad joystick payload: " << e.what() << "\n";
+      throw;
+    }
+  });
 
   std::cout << "[Receiver] RPC handler 'joystick_command' registered. "
             << "Listening for commands...\n";
@@ -108,9 +105,8 @@ int main(int argc, char *argv[]) {
   if (!g_running.load()) {
     std::cout << "[Receiver] Interrupted by signal. Shutting down.\n";
   } else if (!g_sender_connected.load()) {
-    std::cerr
-        << "[Receiver] Timed out after 2 minutes with no sender connection. "
-        << "Exiting as failure.\n";
+    std::cerr << "[Receiver] Timed out after 2 minutes with no sender connection. "
+              << "Exiting as failure.\n";
     room->setDelegate(nullptr);
     room.reset();
     livekit::shutdown();

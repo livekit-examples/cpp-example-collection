@@ -34,66 +34,58 @@ std::atomic<bool> g_running{true};
 
 void handleSignal(int) { g_running.store(false); }
 
-void printUsage(const char *prog) {
+void printUsage(const char* prog) {
   std::cerr << "Usage:\n"
             << "  " << prog << " --url <ws-url> --token <token>\n"
             << "Env fallbacks:\n"
             << "  LIVEKIT_URL, LIVEKIT_TOKEN\n";
 }
 
-bool parseArgs(int argc, char *argv[], std::string &url, std::string &token,
-               bool &self_test) {
+bool parseArgs(int argc, char* argv[], std::string& url, std::string& token, bool& self_test) {
   for (int i = 1; i < argc; ++i) {
     const std::string a = argv[i];
-    if (a == "-h" || a == "--help")
-      return false;
+    if (a == "-h" || a == "--help") return false;
 
     if (a == "--self-test") {
       self_test = true;
       return true;
     }
 
-    auto take = [&](std::string &out) -> bool {
-      if (i + 1 >= argc)
-        return false;
+    auto take = [&](std::string& out) -> bool {
+      if (i + 1 >= argc) return false;
       out = argv[++i];
       return true;
     };
 
     if (a == "--url") {
-      if (!take(url))
-        return false;
+      if (!take(url)) return false;
     } else if (a.rfind("--url=", 0) == 0) {
       url = a.substr(std::string("--url=").size());
     } else if (a == "--token") {
-      if (!take(token))
-        return false;
+      if (!take(token)) return false;
     } else if (a.rfind("--token=", 0) == 0) {
       token = a.substr(std::string("--token=").size());
     }
   }
 
   if (url.empty()) {
-    if (const char *e = std::getenv("LIVEKIT_URL"))
-      url = e;
+    if (const char* e = std::getenv("LIVEKIT_URL")) url = e;
   }
   if (token.empty()) {
-    if (const char *e = std::getenv("LIVEKIT_TOKEN"))
-      token = e;
+    if (const char* e = std::getenv("LIVEKIT_TOKEN")) token = e;
   }
 
   return !(url.empty() || token.empty());
 }
 
 void print_livekit_version() {
-  std::cout << "LiveKit version: " << LIVEKIT_BUILD_VERSION_FULL << " ("
-            << LIVEKIT_BUILD_FLAVOR << ", commit " << LIVEKIT_BUILD_COMMIT
-            << ", built " << LIVEKIT_BUILD_DATE << ")" << std::endl;
+  std::cout << "LiveKit version: " << LIVEKIT_BUILD_VERSION_FULL << " (" << LIVEKIT_BUILD_FLAVOR << ", commit "
+            << LIVEKIT_BUILD_COMMIT << ", built " << LIVEKIT_BUILD_DATE << ")" << std::endl;
 }
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   print_livekit_version();
   std::string url, token;
   bool self_test = false;
@@ -131,8 +123,7 @@ int main(int argc, char *argv[]) {
   // ---- Create & publish AUDIO (noise) ----
   // Match your runNoiseCaptureLoop pacing: it assumes frame_ms=10.
   auto audioSource = std::make_shared<AudioSource>(48000, 1, 10);
-  auto audioTrack =
-      LocalAudioTrack::createLocalAudioTrack("noise", audioSource);
+  auto audioTrack = LocalAudioTrack::createLocalAudioTrack("noise", audioSource);
 
   TrackPublishOptions audioOpts;
   audioOpts.source = TrackSource::SOURCE_MICROPHONE;
@@ -144,7 +135,7 @@ int main(int argc, char *argv[]) {
     room->localParticipant()->publishTrack(audioTrack, audioOpts);
     audioPub = audioTrack->publication();
     std::cout << "Published audio: sid=" << audioPub->sid() << "\n";
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::cerr << "Failed to publish audio: " << e.what() << "\n";
   }
 
@@ -163,7 +154,7 @@ int main(int argc, char *argv[]) {
     room->localParticipant()->publishTrack(videoTrack, videoOpts);
     videoPub = videoTrack->publication();
     std::cout << "Published video: sid=" << videoPub->sid() << "\n";
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::cerr << "Failed to publish video: " << e.what() << "\n";
   }
 
@@ -171,10 +162,8 @@ int main(int argc, char *argv[]) {
   std::atomic<bool> audio_running{true};
   std::atomic<bool> video_running{true};
 
-  std::thread audioThread(
-      [&] { runNoiseCaptureLoop(audioSource, audio_running); });
-  std::thread videoThread(
-      [&] { runFakeVideoCaptureLoop(videoSource, video_running); });
+  std::thread audioThread([&] { runNoiseCaptureLoop(audioSource, audio_running); });
+  std::thread videoThread([&] { runFakeVideoCaptureLoop(videoSource, video_running); });
 
   // Keep alive until Ctrl-C
   while (g_running.load()) {
@@ -185,17 +174,13 @@ int main(int argc, char *argv[]) {
   audio_running.store(false);
   video_running.store(false);
 
-  if (audioThread.joinable())
-    audioThread.join();
-  if (videoThread.joinable())
-    videoThread.join();
+  if (audioThread.joinable()) audioThread.join();
+  if (videoThread.joinable()) videoThread.join();
 
   // Best-effort unpublish
   try {
-    if (audioPub)
-      room->localParticipant()->unpublishTrack(audioPub->sid());
-    if (videoPub)
-      room->localParticipant()->unpublishTrack(videoPub->sid());
+    if (audioPub) room->localParticipant()->unpublishTrack(audioPub->sid());
+    if (videoPub) room->localParticipant()->unpublishTrack(videoPub->sid());
   } catch (...) {
   }
 

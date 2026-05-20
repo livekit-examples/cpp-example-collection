@@ -29,10 +29,10 @@ struct JoystickCommand {
 
 /// Serialize a JoystickCommand to a JSON string.
 /// Example output: {"x":1.0,"y":2.0,"z":3.0}
-std::string joystick_to_json(const JoystickCommand &cmd);
+std::string joystick_to_json(const JoystickCommand& cmd);
 
 /// Deserialize a JSON string into a JoystickCommand.
 /// Throws std::runtime_error if the JSON is invalid or missing fields.
-JoystickCommand json_to_joystick(const std::string &json);
+JoystickCommand json_to_joystick(const std::string& json);
 
 } // namespace simple_joystick

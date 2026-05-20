@@ -17,6 +17,7 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+
 #include <cstdint>
 #include <functional>
 #include <vector>
@@ -29,12 +30,10 @@
 // AudioCallback.
 class SDLMicSource {
 public:
-  using AudioCallback = std::function<void(
-      const int16_t *samples, // interleaved
-      int num_samples_per_channel, int sample_rate, int num_channels)>;
+  using AudioCallback = std::function<void(const int16_t* samples, // interleaved
+                                           int num_samples_per_channel, int sample_rate, int num_channels)>;
 
-  SDLMicSource(int sample_rate = 48000, int channels = 1,
-               int frame_samples = 480, AudioCallback cb = nullptr);
+  SDLMicSource(int sample_rate = 48000, int channels = 1, int frame_samples = 480, AudioCallback cb = nullptr);
 
   ~SDLMicSource();
 
@@ -50,7 +49,7 @@ public:
   bool isValid() const { return stream_ != nullptr; }
 
 private:
-  SDL_AudioStream *stream_ = nullptr;
+  SDL_AudioStream* stream_ = nullptr;
   SDL_AudioSpec spec_{};
   int sample_rate_;
   int channels_;
@@ -72,7 +71,7 @@ public:
   bool init();
 
   // Enqueue interleaved S16 samples for playback.
-  void enqueue(const int16_t *samples, int num_samples_per_channel);
+  void enqueue(const int16_t* samples, int num_samples_per_channel);
 
   void pause();
   void resume();
@@ -80,7 +79,7 @@ public:
   bool isValid() const { return stream_ != nullptr; }
 
 private:
-  SDL_AudioStream *stream_ = nullptr;
+  SDL_AudioStream* stream_ = nullptr;
   SDL_AudioSpec spec_{};
   int sample_rate_;
   int channels_;
@@ -98,15 +97,12 @@ private:
 //  - tell LiveKit that this is ARGB with the given stride.
 class SDLCamSource {
 public:
-  using VideoCallback = std::function<void(
-      const uint8_t *pixels,
-      int pitch, // bytes per row
-      int width, int height, SDL_PixelFormat format, Uint64 timestampNS)>;
+  using VideoCallback = std::function<void(const uint8_t* pixels,
+                                           int pitch, // bytes per row
+                                           int width, int height, SDL_PixelFormat format, Uint64 timestampNS)>;
 
-  SDLCamSource(int desired_width = 1280, int desired_height = 720,
-               int desired_fps = 30,
-               SDL_PixelFormat pixelFormat = SDL_PIXELFORMAT_RGBA8888,
-               VideoCallback cb = nullptr);
+  SDLCamSource(int desired_width = 1280, int desired_height = 720, int desired_fps = 30,
+               SDL_PixelFormat pixelFormat = SDL_PIXELFORMAT_RGBA8888, VideoCallback cb = nullptr);
 
   ~SDLCamSource();
 
@@ -118,7 +114,7 @@ public:
   bool isValid() const { return camera_ != nullptr; }
 
 private:
-  SDL_Camera *camera_ = nullptr;
+  SDL_Camera* camera_ = nullptr;
   SDL_CameraSpec spec_{};
   int width_;
   int height_;

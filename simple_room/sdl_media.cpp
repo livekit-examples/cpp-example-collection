@@ -20,10 +20,8 @@
 
 // ---------------------- SDLMicSource -----------------------------
 
-SDLMicSource::SDLMicSource(int sample_rate, int channels, int frame_samples,
-                           AudioCallback cb)
-    : sample_rate_(sample_rate), channels_(channels),
-      frame_samples_(frame_samples), callback_(std::move(cb)) {}
+SDLMicSource::SDLMicSource(int sample_rate, int channels, int frame_samples, AudioCallback cb)
+    : sample_rate_(sample_rate), channels_(channels), frame_samples_(frame_samples), callback_(std::move(cb)) {}
 
 SDLMicSource::~SDLMicSource() {
   if (stream_) {
@@ -41,11 +39,10 @@ bool SDLMicSource::init() {
 
   // Open default recording device as an audio stream
   // This works for both playback and recording, depending on the device id.
-  stream_ = SDL_OpenAudioDeviceStream(
-      SDL_AUDIO_DEVICE_DEFAULT_RECORDING, // recording device
-      &spec_,
-      nullptr, // no callback, we'll poll
-      nullptr);
+  stream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_RECORDING, // recording device
+                                      &spec_,
+                                      nullptr, // no callback, we'll poll
+                                      nullptr);
 
   if (!stream_) {
     std::cerr << "[error] Failed to open recording stream: " << SDL_GetError() << "\n";
@@ -61,8 +58,7 @@ bool SDLMicSource::init() {
 }
 
 void SDLMicSource::pump() {
-  if (!stream_ || !callback_)
-    return;
+  if (!stream_ || !callback_) return;
 
   const int samples_per_frame_total = frame_samples_ * channels_;
   const int bytes_per_frame = samples_per_frame_total * sizeof(int16_t);
@@ -102,8 +98,7 @@ void SDLMicSource::resume() {
 
 // ---------------------- DDLSpeakerSink -----------------------------
 
-DDLSpeakerSink::DDLSpeakerSink(int sample_rate, int channels)
-    : sample_rate_(sample_rate), channels_(channels) {}
+DDLSpeakerSink::DDLSpeakerSink(int sample_rate, int channels) : sample_rate_(sample_rate), channels_(channels) {}
 
 DDLSpeakerSink::~DDLSpeakerSink() {
   if (stream_) {
@@ -136,10 +131,8 @@ bool DDLSpeakerSink::init() {
   return true;
 }
 
-void DDLSpeakerSink::enqueue(const int16_t *samples,
-                             int num_samples_per_channel) {
-  if (!stream_ || !samples)
-    return;
+void DDLSpeakerSink::enqueue(const int16_t* samples, int num_samples_per_channel) {
+  if (!stream_ || !samples) return;
 
   const int totalSamples = num_samples_per_channel * channels_;
   const int bytes = totalSamples * static_cast<int>(sizeof(int16_t));
@@ -164,11 +157,13 @@ void DDLSpeakerSink::resume() {
 
 // ---------------------- SDLCamSource -----------------------------
 
-SDLCamSource::SDLCamSource(int desired_width, int desired_height,
-                           int desired_fps, SDL_PixelFormat pixel_format,
+SDLCamSource::SDLCamSource(int desired_width, int desired_height, int desired_fps, SDL_PixelFormat pixel_format,
                            VideoCallback cb)
-    : width_(desired_width), height_(desired_height), fps_(desired_fps),
-      format_(pixel_format), callback_(std::move(cb)) {}
+    : width_(desired_width),
+      height_(desired_height),
+      fps_(desired_fps),
+      format_(pixel_format),
+      callback_(std::move(cb)) {}
 
 SDLCamSource::~SDLCamSource() {
   if (camera_) {
@@ -179,11 +174,10 @@ SDLCamSource::~SDLCamSource() {
 
 bool SDLCamSource::init() {
   int count = 0;
-  SDL_CameraID *cams = SDL_GetCameras(&count); //
+  SDL_CameraID* cams = SDL_GetCameras(&count); //
   if (!cams || count == 0) {
     std::cerr << "[error] No cameras available: " << SDL_GetError() << "\n";
-    if (cams)
-      SDL_free(cams);
+    if (cams) SDL_free(cams);
     return false;
   }
 
@@ -210,17 +204,15 @@ bool SDLCamSource::init() {
 }
 
 void SDLCamSource::pump() {
-  if (!camera_ || !callback_)
-    return;
+  if (!camera_ || !callback_) return;
 
   Uint64 tsNS = 0;
-  SDL_Surface *surf = SDL_AcquireCameraFrame(camera_, &tsNS); // non-blocking
+  SDL_Surface* surf = SDL_AcquireCameraFrame(camera_, &tsNS); // non-blocking
   if (!surf) {
     return;
   }
 
-  callback_(static_cast<uint8_t *>(surf->pixels), surf->pitch, surf->w, surf->h,
-            surf->format, tsNS);
+  callback_(static_cast<uint8_t*>(surf->pixels), surf->pitch, surf->w, surf->h, surf->format, tsNS);
 
   SDL_ReleaseCameraFrame(camera_, surf); //
 }

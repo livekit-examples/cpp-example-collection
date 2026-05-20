@@ -43,14 +43,12 @@ std::atomic<bool> g_running{true};
 
 void handleSignal(int) { g_running.store(false); }
 
-void printUsage(const char *prog) {
+void printUsage(const char* prog) {
   std::cerr << "Usage:\n"
             << "  " << prog << " <ws-url> <token> [role]\n"
             << "or:\n"
-            << "  " << prog
-            << " --url=<ws-url> --token=<token> [--role=<role>]\n"
-            << "  " << prog
-            << " --url <ws-url> --token <token> [--role <role>]\n\n"
+            << "  " << prog << " --url=<ws-url> --token=<token> [--role=<role>]\n"
+            << "  " << prog << " --url <ws-url> --token <token> [--role <role>]\n\n"
             << "Env fallbacks:\n"
             << "  LIVEKIT_URL, LIVEKIT_TOKEN\n"
             << "Role (participant behavior):\n"
@@ -59,15 +57,12 @@ void printUsage(const char *prog) {
 }
 
 inline double nowMs() {
-  return std::chrono::duration<double, std::milli>(
-             std::chrono::steady_clock::now().time_since_epoch())
-      .count();
+  return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 // Poll the room until a remote participant with the given identity appears,
 // or until 'timeout' elapses. Returns true if found, false on timeout.
-bool waitForParticipant(Room *room, const std::string &identity,
-                        std::chrono::milliseconds timeout) {
+bool waitForParticipant(Room* room, const std::string& identity, std::chrono::milliseconds timeout) {
   auto start = std::chrono::steady_clock::now();
 
   while (std::chrono::steady_clock::now() - start < timeout) {
@@ -81,15 +76,11 @@ bool waitForParticipant(Room *room, const std::string &identity,
 
 // For the caller: wait for a specific peer, and if they don't show up,
 // explain why and how to start them in another terminal.
-bool ensurePeerPresent(Room *room, const std::string &identity,
-                       const std::string &friendly_role, const std::string &url,
-                       std::chrono::seconds timeout) {
-  std::cout << "[Caller] Waiting up to " << timeout.count() << "s for "
-            << friendly_role << " (identity=\"" << identity
+bool ensurePeerPresent(Room* room, const std::string& identity, const std::string& friendly_role,
+                       const std::string& url, std::chrono::seconds timeout) {
+  std::cout << "[Caller] Waiting up to " << timeout.count() << "s for " << friendly_role << " (identity=\"" << identity
             << "\") to join...\n";
-  bool present = waitForParticipant(
-      room, identity,
-      std::chrono::duration_cast<std::chrono::milliseconds>(timeout));
+  bool present = waitForParticipant(room, identity, std::chrono::duration_cast<std::chrono::milliseconds>(timeout));
   if (present) {
     std::cout << "[Caller] " << friendly_role << " is present.\n";
     return true;
@@ -97,23 +88,18 @@ bool ensurePeerPresent(Room *room, const std::string &identity,
   // Timed out
   auto info = room->room_info();
   const std::string room_name = info.name;
-  std::cout << "[Caller] Timed out after " << timeout.count()
-            << "s waiting for " << friendly_role << " (identity=\"" << identity
-            << "\").\n";
-  std::cout << "[Caller] No participant with identity \"" << identity
-            << "\" appears to be connected to room \"" << room_name
-            << "\".\n\n";
-  std::cout << "To start a " << friendly_role
-            << " in another terminal, run:\n\n"
-            << "  lk token create -r test -i " << identity
-            << " --join --valid-for 99999h --dev --room=" << room_name << "\n"
-            << "  ./build/examples/SimpleRpc " << url
-            << " $token --role=" << friendly_role << "\n\n";
+  std::cout << "[Caller] Timed out after " << timeout.count() << "s waiting for " << friendly_role << " (identity=\""
+            << identity << "\").\n";
+  std::cout << "[Caller] No participant with identity \"" << identity << "\" appears to be connected to room \""
+            << room_name << "\".\n\n";
+  std::cout << "To start a " << friendly_role << " in another terminal, run:\n\n"
+            << "  lk token create -r test -i " << identity << " --join --valid-for 99999h --dev --room=" << room_name
+            << "\n"
+            << "  ./build/examples/SimpleRpc " << url << " $token --role=" << friendly_role << "\n\n";
   return false;
 }
 
-bool parseArgs(int argc, char *argv[], std::string &url, std::string &token,
-               std::string &role) {
+bool parseArgs(int argc, char* argv[], std::string& url, std::string& token, std::string& role) {
   // --help
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
@@ -123,7 +109,7 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token,
   }
 
   // helper for flags
-  auto get_flag_value = [&](const std::string &name, int &i) -> std::string {
+  auto get_flag_value = [&](const std::string& name, int& i) -> std::string {
     std::string arg = argv[i];
     const std::string eq = name + "=";
     if (arg.rfind(name, 0) == 0) { // starts with name
@@ -141,24 +127,20 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token,
     const std::string a = argv[i];
     if (a.rfind("--url", 0) == 0) {
       auto v = get_flag_value("--url", i);
-      if (!v.empty())
-        url = v;
+      if (!v.empty()) url = v;
     } else if (a.rfind("--token", 0) == 0) {
       auto v = get_flag_value("--token", i);
-      if (!v.empty())
-        token = v;
+      if (!v.empty()) token = v;
     } else if (a.rfind("--role", 0) == 0) {
       auto v = get_flag_value("--role", i);
-      if (!v.empty())
-        role = v;
+      if (!v.empty()) role = v;
     }
   }
 
   std::vector<std::string> pos;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
-    if (a.rfind("--", 0) == 0)
-      continue;
+    if (a.rfind("--", 0) == 0) continue;
     pos.push_back(std::move(a));
   }
   if (!pos.empty()) {
@@ -174,19 +156,16 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token,
   }
 
   if (url.empty()) {
-    const char *e = std::getenv("LIVEKIT_URL");
-    if (e)
-      url = e;
+    const char* e = std::getenv("LIVEKIT_URL");
+    if (e) url = e;
   }
   if (token.empty()) {
-    const char *e = std::getenv("LIVEKIT_TOKEN");
-    if (e)
-      token = e;
+    const char* e = std::getenv("LIVEKIT_TOKEN");
+    if (e) token = e;
   }
   if (role.empty()) {
-    const char *e = std::getenv("SIMPLE_RPC_ROLE");
-    if (e)
-      role = e;
+    const char* e = std::getenv("SIMPLE_RPC_ROLE");
+    if (e) role = e;
   }
   if (role.empty()) {
     role = "caller";
@@ -195,106 +174,90 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token,
   return !(url.empty() || token.empty());
 }
 
-std::string makeNumberJson(const std::string &key, double value) {
+std::string makeNumberJson(const std::string& key, double value) {
   std::ostringstream oss;
   oss << "{\"" << key << "\":" << value << "}";
   return oss.str();
 }
 
-std::string makeStringJson(const std::string &key, const std::string &value) {
+std::string makeStringJson(const std::string& key, const std::string& value) {
   std::ostringstream oss;
   oss << "{\"" << key << "\":\"" << value << "\"}";
   return oss.str();
 }
 
-double parseNumberFromJson(const std::string &json) {
+double parseNumberFromJson(const std::string& json) {
   auto colon = json.find(':');
-  if (colon == std::string::npos)
-    throw std::runtime_error("invalid json: " + json);
+  if (colon == std::string::npos) throw std::runtime_error("invalid json: " + json);
   auto start = colon + 1;
   auto end = json.find_first_of(",}", start);
   std::string num_str = json.substr(start, end - start);
   return std::stod(num_str);
 }
 
-std::string parseStringFromJson(const std::string &json) {
+std::string parseStringFromJson(const std::string& json) {
   auto colon = json.find(':');
-  if (colon == std::string::npos)
-    throw std::runtime_error("invalid json: " + json);
+  if (colon == std::string::npos) throw std::runtime_error("invalid json: " + json);
   auto first_quote = json.find('"', colon + 1);
-  if (first_quote == std::string::npos)
-    throw std::runtime_error("invalid json: " + json);
+  if (first_quote == std::string::npos) throw std::runtime_error("invalid json: " + json);
   auto second_quote = json.find('"', first_quote + 1);
-  if (second_quote == std::string::npos)
-    throw std::runtime_error("invalid json: " + json);
+  if (second_quote == std::string::npos) throw std::runtime_error("invalid json: " + json);
   return json.substr(first_quote + 1, second_quote - first_quote - 1);
 }
 
 // RPC handler registration
-void registerReceiverMethods(Room *greeters_room, Room *math_genius_room) {
-  LocalParticipant *greeter_lp = greeters_room->localParticipant();
-  LocalParticipant *math_genius_lp = math_genius_room->localParticipant();
+void registerReceiverMethods(Room* greeters_room, Room* math_genius_room) {
+  LocalParticipant* greeter_lp = greeters_room->localParticipant();
+  LocalParticipant* math_genius_lp = math_genius_room->localParticipant();
 
   // arrival
-  greeter_lp->registerRpcMethod(
-      "arrival",
-      [](const RpcInvocationData &data) -> std::optional<std::string> {
-        std::cout << "[Greeter] Oh " << data.caller_identity
-                  << " arrived and said \"" << data.payload << "\"\n";
-        std::this_thread::sleep_for(2s);
-        return std::optional<std::string>{"Welcome and have a wonderful day!"};
-      });
+  greeter_lp->registerRpcMethod("arrival", [](const RpcInvocationData& data) -> std::optional<std::string> {
+    std::cout << "[Greeter] Oh " << data.caller_identity << " arrived and said \"" << data.payload << "\"\n";
+    std::this_thread::sleep_for(2s);
+    return std::optional<std::string>{"Welcome and have a wonderful day!"};
+  });
 
   // square-root
-  math_genius_lp->registerRpcMethod(
-      "square-root",
-      [](const RpcInvocationData &data) -> std::optional<std::string> {
-        double number = parseNumberFromJson(data.payload);
-        std::cout << "[Math Genius] I guess " << data.caller_identity
-                  << " wants the square root of " << number
-                  << ". I've only got " << data.response_timeout_sec
-                  << " seconds to respond but I think I can pull it off.\n";
-        std::cout << "[Math Genius] *doing math*…\n";
-        std::this_thread::sleep_for(2s);
-        double result = std::sqrt(number);
-        std::cout << "[Math Genius] Aha! It's " << result << "\n";
-        return makeNumberJson("result", result);
-      });
+  math_genius_lp->registerRpcMethod("square-root", [](const RpcInvocationData& data) -> std::optional<std::string> {
+    double number = parseNumberFromJson(data.payload);
+    std::cout << "[Math Genius] I guess " << data.caller_identity << " wants the square root of " << number
+              << ". I've only got " << data.response_timeout_sec
+              << " seconds to respond but I think I can pull it off.\n";
+    std::cout << "[Math Genius] *doing math*…\n";
+    std::this_thread::sleep_for(2s);
+    double result = std::sqrt(number);
+    std::cout << "[Math Genius] Aha! It's " << result << "\n";
+    return makeNumberJson("result", result);
+  });
 
   // divide
-  math_genius_lp->registerRpcMethod(
-      "divide",
-      [](const RpcInvocationData &data) -> std::optional<std::string> {
-        // expect {"dividend":X,"divisor":Y} – we'll parse very lazily
-        auto div_pos = data.payload.find("dividend");
-        auto dvr_pos = data.payload.find("divisor");
-        if (div_pos == std::string::npos || dvr_pos == std::string::npos) {
-          throw std::runtime_error("invalid divide payload");
-        }
+  math_genius_lp->registerRpcMethod("divide", [](const RpcInvocationData& data) -> std::optional<std::string> {
+    // expect {"dividend":X,"divisor":Y} – we'll parse very lazily
+    auto div_pos = data.payload.find("dividend");
+    auto dvr_pos = data.payload.find("divisor");
+    if (div_pos == std::string::npos || dvr_pos == std::string::npos) {
+      throw std::runtime_error("invalid divide payload");
+    }
 
-        double dividend = parseNumberFromJson(
-            data.payload.substr(div_pos, dvr_pos - div_pos - 1)); // rough slice
-        double divisor = parseNumberFromJson(data.payload.substr(dvr_pos));
+    double dividend = parseNumberFromJson(data.payload.substr(div_pos, dvr_pos - div_pos - 1)); // rough slice
+    double divisor = parseNumberFromJson(data.payload.substr(dvr_pos));
 
-        std::cout << "[Math Genius] " << data.caller_identity
-                  << " wants to divide " << dividend << " by " << divisor
-                  << ".\n";
+    std::cout << "[Math Genius] " << data.caller_identity << " wants to divide " << dividend << " by " << divisor
+              << ".\n";
 
-        if (divisor == 0.0) {
-          // will be translated to APPLICATION_ERROR by your RpcError logic
-          throw std::runtime_error("division by zero");
-        }
+    if (divisor == 0.0) {
+      // will be translated to APPLICATION_ERROR by your RpcError logic
+      throw std::runtime_error("division by zero");
+    }
 
-        double result = dividend / divisor;
-        return makeNumberJson("result", result);
-      });
+    double result = dividend / divisor;
+    return makeNumberJson("result", result);
+  });
 
   // long-calculation
   math_genius_lp->registerRpcMethod(
-      "long-calculation",
-      [](const RpcInvocationData &data) -> std::optional<std::string> {
-        std::cout << "[Math Genius] Starting a very long calculation for "
-                  << data.caller_identity << "\n";
+      "long-calculation", [](const RpcInvocationData& data) -> std::optional<std::string> {
+        std::cout << "[Math Genius] Starting a very long calculation for " << data.caller_identity << "\n";
         std::cout << "[Math Genius] This will take 30 seconds even though "
                      "you're only giving me "
                   << data.response_timeout_sec << " seconds\n";
@@ -307,17 +270,15 @@ void registerReceiverMethods(Room *greeters_room, Room *math_genius_room) {
   // so the caller sees UNSUPPORTED_METHOD
 }
 
-void performGreeting(Room *room) {
+void performGreeting(Room* room) {
   std::cout << "[Caller] Letting the greeter know that I've arrived\n";
   double t0 = nowMs();
   try {
-    std::string response = room->localParticipant()->performRpc(
-        "greeter", "arrival", "Hello", std::nullopt);
+    std::string response = room->localParticipant()->performRpc("greeter", "arrival", "Hello", std::nullopt);
     double t1 = nowMs();
     std::cout << "[Caller] RTT: " << (t1 - t0) << " ms\n";
-    std::cout << "[Caller] That's nice, the greeter said: \"" << response
-              << "\"\n";
-  } catch (const std::exception &error) {
+    std::cout << "[Caller] That's nice, the greeter said: \"" << response << "\"\n";
+  } catch (const std::exception& error) {
     double t1 = nowMs();
     std::cout << "[Caller] (FAILED) RTT: " << (t1 - t0) << " ms\n";
     std::cout << "[Caller] RPC call failed: " << error.what() << "\n";
@@ -325,18 +286,17 @@ void performGreeting(Room *room) {
   }
 }
 
-void performSquareRoot(Room *room) {
+void performSquareRoot(Room* room) {
   std::cout << "[Caller] What's the square root of 16?\n";
   double t0 = nowMs();
   try {
     std::string payload = makeNumberJson("number", 16.0);
-    std::string response = room->localParticipant()->performRpc(
-        "math-genius", "square-root", payload, std::nullopt);
+    std::string response = room->localParticipant()->performRpc("math-genius", "square-root", payload, std::nullopt);
     double t1 = nowMs();
     std::cout << "[Caller] RTT: " << (t1 - t0) << " ms\n";
     double result = parseNumberFromJson(response);
     std::cout << "[Caller] Nice, the answer was " << result << "\n";
-  } catch (const std::exception &error) {
+  } catch (const std::exception& error) {
     double t1 = nowMs();
     std::cout << "[Caller] (FAILED) RTT: " << (t1 - t0) << " ms\n";
     std::cout << "[Caller] RPC call failed: " << error.what() << "\n";
@@ -344,20 +304,19 @@ void performSquareRoot(Room *room) {
   }
 }
 
-void performQuantumHyperGeometricSeries(Room *room) {
+void performQuantumHyperGeometricSeries(Room* room) {
   std::cout << "\n=== Unsupported Method Example ===\n";
-  std::cout
-      << "[Caller] Asking math-genius for 'quantum-hypergeometric-series'. "
-         "This should FAIL because the handler is NOT registered.\n";
+  std::cout << "[Caller] Asking math-genius for 'quantum-hypergeometric-series'. "
+               "This should FAIL because the handler is NOT registered.\n";
   double t0 = nowMs();
   try {
     std::string payload = makeNumberJson("number", 42.0);
-    std::string response = room->localParticipant()->performRpc(
-        "math-genius", "quantum-hypergeometric-series", payload, std::nullopt);
+    std::string response =
+        room->localParticipant()->performRpc("math-genius", "quantum-hypergeometric-series", payload, std::nullopt);
     double t1 = nowMs();
     std::cout << "[Caller] (Unexpected success) RTT=" << (t1 - t0) << " ms\n";
     std::cout << "[Caller] Result: " << response << "\n";
-  } catch (const RpcError &error) {
+  } catch (const RpcError& error) {
     double t1 = nowMs();
     std::cout << "[Caller] RpcError RTT=" << (t1 - t0) << " ms\n";
     auto code = static_cast<RpcError::ErrorCode>(error.code());
@@ -366,74 +325,65 @@ void performQuantumHyperGeometricSeries(Room *room) {
                    "method.\n";
       std::cout << "[Caller] Server returned UNSUPPORTED_METHOD.\n";
     } else {
-      std::cout << "[Caller] ✗ Unexpected error type: " << error.message()
-                << "\n";
+      std::cout << "[Caller] ✗ Unexpected error type: " << error.message() << "\n";
     }
   }
 }
 
-void performDivide(Room *room) {
+void performDivide(Room* room) {
   std::cout << "\n=== Divide Example ===\n";
   std::cout << "[Caller] Asking math-genius to divide 10 by 0. "
                "This is EXPECTED to FAIL with an APPLICATION_ERROR.\n";
   double t0 = nowMs();
   try {
     std::string payload = "{\"dividend\":10,\"divisor\":0}";
-    std::string response = room->localParticipant()->performRpc(
-        "math-genius", "divide", payload, std::nullopt);
+    std::string response = room->localParticipant()->performRpc("math-genius", "divide", payload, std::nullopt);
     double t1 = nowMs();
     std::cout << "[Caller] (Unexpected success) RTT=" << (t1 - t0) << " ms\n";
     std::cout << "[Caller] Result = " << response << "\n";
-  } catch (const RpcError &error) {
+  } catch (const RpcError& error) {
     double t1 = nowMs();
     std::cout << "[Caller] RpcError RTT=" << (t1 - t0) << " ms\n";
     auto code = static_cast<RpcError::ErrorCode>(error.code());
     if (code == RpcError::ErrorCode::APPLICATION_ERROR) {
       std::cout << "[Caller] ✓ Expected: divide-by-zero triggers "
                    "APPLICATION_ERROR.\n";
-      std::cout << "[Caller] Math-genius threw an exception: "
-                << error.message() << "\n";
+      std::cout << "[Caller] Math-genius threw an exception: " << error.message() << "\n";
     } else {
-      std::cout << "[Caller] ✗ Unexpected RpcError type: " << error.message()
-                << "\n";
+      std::cout << "[Caller] ✗ Unexpected RpcError type: " << error.message() << "\n";
     }
   }
 }
 
-void performLongCalculation(Room *room) {
+void performLongCalculation(Room* room) {
   std::cout << "\n=== Long Calculation Example ===\n";
-  std::cout
-      << "[Caller] Asking math-genius for a calculation that takes 30s.\n";
-  std::cout
-      << "[Caller] Giving only 10s to respond. EXPECTED RESULT: TIMEOUT.\n";
+  std::cout << "[Caller] Asking math-genius for a calculation that takes 30s.\n";
+  std::cout << "[Caller] Giving only 10s to respond. EXPECTED RESULT: TIMEOUT.\n";
   double t0 = nowMs();
   try {
-    std::string response = room->localParticipant()->performRpc(
-        "math-genius", "long-calculation", "{}", 10.0);
+    std::string response = room->localParticipant()->performRpc("math-genius", "long-calculation", "{}", 10.0);
     double t1 = nowMs();
     std::cout << "[Caller] (Unexpected success) RTT=" << (t1 - t0) << " ms\n";
     std::cout << "[Caller] Result: " << response << "\n";
-  } catch (const RpcError &error) {
+  } catch (const RpcError& error) {
     double t1 = nowMs();
     std::cout << "[Caller] RpcError RTT=" << (t1 - t0) << " ms\n";
     auto code = static_cast<RpcError::ErrorCode>(error.code());
     if (code == RpcError::ErrorCode::RESPONSE_TIMEOUT) {
-      std::cout
-          << "[Caller] ✓ Expected: handler sleeps 30s but timeout is 10s.\n";
+      std::cout << "[Caller] ✓ Expected: handler sleeps 30s but timeout is 10s.\n";
       std::cout << "[Caller] Server correctly returned RESPONSE_TIMEOUT.\n";
     } else if (code == RpcError::ErrorCode::RECIPIENT_DISCONNECTED) {
       std::cout << "[Caller] ✓ Expected if math-genius disconnects during the "
                    "test.\n";
     } else {
-      std::cout << "[Caller] ✗ Unexpected RPC error: " << error.message()
-                << "\n";
+      std::cout << "[Caller] ✗ Unexpected RPC error: " << error.message() << "\n";
     }
   }
 }
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   std::string url, token, role;
   if (!parseArgs(argc, argv, url, token, role)) {
     printUsage(argv[0]);
@@ -475,10 +425,8 @@ int main(int argc, char *argv[]) {
   try {
     if (role == "caller") {
       // Check that both peers are present (or explain how to start them).
-      bool has_greeter =
-          ensurePeerPresent(room.get(), "greeter", "greeter", url, 8s);
-      bool has_math_genius =
-          ensurePeerPresent(room.get(), "math-genius", "math-genius", url, 8s);
+      bool has_greeter = ensurePeerPresent(room.get(), "greeter", "greeter", url, 8s);
+      bool has_math_genius = ensurePeerPresent(room.get(), "math-genius", "math-genius", url, 8s);
       if (!has_greeter || !has_math_genius) {
         std::cout << "\n[Caller] One or more RPC peers are missing. "
                   << "Some examples may be skipped.\n";
@@ -525,8 +473,7 @@ int main(int argc, char *argv[]) {
         registerReceiverMethods(room.get(), room.get());
       }
 
-      std::cout << "RPC handlers registered for role=" << role
-                << ". Waiting for RPC calls (Ctrl-C to exit)...\n";
+      std::cout << "RPC handlers registered for role=" << role << ". Waiting for RPC calls (Ctrl-C to exit)...\n";
 
       while (g_running.load()) {
         std::this_thread::sleep_for(50ms);
@@ -535,7 +482,7 @@ int main(int argc, char *argv[]) {
     } else {
       std::cerr << "Unknown role: " << role << "\n";
     }
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::cerr << "Unexpected error in main: " << e.what() << "\n";
   }
 

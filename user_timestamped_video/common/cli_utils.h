@@ -46,12 +46,12 @@ inline void installSignalHandlers() {
 #endif
 }
 
-inline std::string getenvOrEmpty(const char *name) {
-  const char *value = std::getenv(name);
+inline std::string getenvOrEmpty(const char* name) {
+  const char* value = std::getenv(name);
   return value ? std::string(value) : std::string{};
 }
 
-inline void printUsage(const char *program) {
+inline void printUsage(const char* program) {
   std::cerr << "Usage:\n"
             << "  " << program << " <ws-url> <token> "
             << "[--with-user-timestamp|--without-user-timestamp]\n"
@@ -60,7 +60,7 @@ inline void printUsage(const char *program) {
             << " [--with-user-timestamp|--without-user-timestamp]\n";
 }
 
-inline ParseResult parseArgs(int argc, char *argv[], CliOptions &options) {
+inline ParseResult parseArgs(int argc, char* argv[], CliOptions& options) {
   std::vector<std::string> positional;
   options = CliOptions{};
 
@@ -98,8 +98,7 @@ inline ParseResult parseArgs(int argc, char *argv[], CliOptions &options) {
     return ParseResult::Error;
   }
 
-  return (options.url.empty() || options.token.empty()) ? ParseResult::Error
-                                                        : ParseResult::Ok;
+  return (options.url.empty() || options.token.empty()) ? ParseResult::Error : ParseResult::Ok;
 }
 
 } // namespace user_timestamped_video

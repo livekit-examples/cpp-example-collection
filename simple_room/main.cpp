@@ -36,31 +36,27 @@ namespace {
 
 std::atomic<bool> g_running{true};
 
-void printUsage(const char *prog) {
-  std::cerr
-      << "Usage:\n"
-      << "  " << prog
-      << " <ws-url> <token> [--enable_e2ee] [--e2ee_key <key>]\n"
-      << "or:\n"
-      << "  " << prog
-      << " --url=<ws-url> --token=<token> [--enable_e2ee] [--e2ee_key=<key>]\n"
-      << "  " << prog
-      << " --url <ws-url> --token <token> [--enable_e2ee] [--e2ee_key "
-         "<key>]\n\n"
-      << "E2EE:\n"
-      << "  --enable_e2ee          Enable end-to-end encryption (E2EE)\n"
-      << "  --e2ee_key <key>       Optional shared key (UTF-8). If omitted, "
-         "E2EE is enabled\n"
-      << "                         but no shared key is set (advanced "
-         "usage).\n\n"
-      << "Env fallbacks:\n"
-      << "  LIVEKIT_URL, LIVEKIT_TOKEN, LIVEKIT_E2EE_KEY\n";
+void printUsage(const char* prog) {
+  std::cerr << "Usage:\n"
+            << "  " << prog << " <ws-url> <token> [--enable_e2ee] [--e2ee_key <key>]\n"
+            << "or:\n"
+            << "  " << prog << " --url=<ws-url> --token=<token> [--enable_e2ee] [--e2ee_key=<key>]\n"
+            << "  " << prog
+            << " --url <ws-url> --token <token> [--enable_e2ee] [--e2ee_key "
+               "<key>]\n\n"
+            << "E2EE:\n"
+            << "  --enable_e2ee          Enable end-to-end encryption (E2EE)\n"
+            << "  --e2ee_key <key>       Optional shared key (UTF-8). If omitted, "
+               "E2EE is enabled\n"
+            << "                         but no shared key is set (advanced "
+               "usage).\n\n"
+            << "Env fallbacks:\n"
+            << "  LIVEKIT_URL, LIVEKIT_TOKEN, LIVEKIT_E2EE_KEY\n";
 }
 
 void handleSignal(int) { g_running.store(false); }
 
-bool parseArgs(int argc, char *argv[], std::string &url, std::string &token,
-               bool &enable_e2ee, std::string &e2ee_key) {
+bool parseArgs(int argc, char* argv[], std::string& url, std::string& token, bool& enable_e2ee, std::string& e2ee_key) {
   enable_e2ee = false;
   // --help
   for (int i = 1; i < argc; ++i) {
@@ -71,7 +67,7 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token,
   }
 
   // flags: --url= / --token= or split form
-  auto get_flag_value = [&](const std::string &name, int &i) -> std::string {
+  auto get_flag_value = [&](const std::string& name, int& i) -> std::string {
     std::string arg = argv[i];
     const std::string eq = name + "=";
     if (arg.rfind(name, 0) == 0) { // starts with name
@@ -90,16 +86,13 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token,
       enable_e2ee = true;
     } else if (a.rfind("--url", 0) == 0) {
       auto v = get_flag_value("--url", i);
-      if (!v.empty())
-        url = v;
+      if (!v.empty()) url = v;
     } else if (a.rfind("--token", 0) == 0) {
       auto v = get_flag_value("--token", i);
-      if (!v.empty())
-        token = v;
+      if (!v.empty()) token = v;
     } else if (a.rfind("--e2ee_key", 0) == 0) {
       auto v = get_flag_value("--e2ee_key", i);
-      if (!v.empty())
-        e2ee_key = v;
+      if (!v.empty()) e2ee_key = v;
     }
   }
 
@@ -108,33 +101,27 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token,
     std::vector<std::string> pos;
     for (int i = 1; i < argc; ++i) {
       std::string a = argv[i];
-      if (a.rfind("--", 0) == 0)
-        continue; // skip flags we already parsed
+      if (a.rfind("--", 0) == 0) continue; // skip flags we already parsed
       pos.push_back(std::move(a));
     }
     if (pos.size() >= 2) {
-      if (url.empty())
-        url = pos[0];
-      if (token.empty())
-        token = pos[1];
+      if (url.empty()) url = pos[0];
+      if (token.empty()) token = pos[1];
     }
   }
 
   // 4) env fallbacks
   if (url.empty()) {
-    const char *e = std::getenv("LIVEKIT_URL");
-    if (e)
-      url = e;
+    const char* e = std::getenv("LIVEKIT_URL");
+    if (e) url = e;
   }
   if (token.empty()) {
-    const char *e = std::getenv("LIVEKIT_TOKEN");
-    if (e)
-      token = e;
+    const char* e = std::getenv("LIVEKIT_TOKEN");
+    if (e) token = e;
   }
   if (e2ee_key.empty()) {
-    const char *e = std::getenv("LIVEKIT_E2EE_KEY");
-    if (e)
-      e2ee_key = e;
+    const char* e = std::getenv("LIVEKIT_E2EE_KEY");
+    if (e) e2ee_key = e;
   }
 
   return !(url.empty() || token.empty());
@@ -169,26 +156,18 @@ private:
 
 class SimpleRoomDelegate : public livekit::RoomDelegate {
 public:
-  explicit SimpleRoomDelegate(SDLMediaManager &media) : media_(media) {}
+  explicit SimpleRoomDelegate(SDLMediaManager& media) : media_(media) {}
 
-  void onParticipantConnected(
-      livekit::Room & /*room*/,
-      const livekit::ParticipantConnectedEvent &ev) override {
-    std::cout << "[Room] participant connected: identity="
-              << ev.participant->identity()
+  void onParticipantConnected(livekit::Room& /*room*/, const livekit::ParticipantConnectedEvent& ev) override {
+    std::cout << "[Room] participant connected: identity=" << ev.participant->identity()
               << " name=" << ev.participant->name() << "\n";
   }
 
-  void onTrackSubscribed(livekit::Room & /*room*/,
-                         const livekit::TrackSubscribedEvent &ev) override {
-    const char *participant_identity =
-        ev.participant ? ev.participant->identity().c_str() : "<unknown>";
-    const std::string track_sid =
-        ev.publication ? ev.publication->sid() : "<unknown>";
-    const std::string track_name =
-        ev.publication ? ev.publication->name() : "<unknown>";
-    std::cout << "[Room] track subscribed: participant_identity="
-              << participant_identity << " track_sid=" << track_sid
+  void onTrackSubscribed(livekit::Room& /*room*/, const livekit::TrackSubscribedEvent& ev) override {
+    const char* participant_identity = ev.participant ? ev.participant->identity().c_str() : "<unknown>";
+    const std::string track_sid = ev.publication ? ev.publication->sid() : "<unknown>";
+    const std::string track_name = ev.publication ? ev.publication->name() : "<unknown>";
+    std::cout << "[Room] track subscribed: participant_identity=" << participant_identity << " track_sid=" << track_sid
               << " name=" << track_name;
     if (ev.track) {
       std::cout << " kind=" << static_cast<int>(ev.track->kind());
@@ -225,22 +204,19 @@ public:
   }
 
 private:
-  SDLMediaManager &media_;
+  SDLMediaManager& media_;
 };
 
-static std::vector<std::uint8_t> toBytes(const std::string &s) {
-  return std::vector<std::uint8_t>(s.begin(), s.end());
-}
+static std::vector<std::uint8_t> toBytes(const std::string& s) { return std::vector<std::uint8_t>(s.begin(), s.end()); }
 
 void print_livekit_version() {
-  std::cout << "LiveKit version: " << LIVEKIT_BUILD_VERSION_FULL << " ("
-            << LIVEKIT_BUILD_FLAVOR << ", commit " << LIVEKIT_BUILD_COMMIT
-            << ", built " << LIVEKIT_BUILD_DATE << ")" << std::endl;
+  std::cout << "LiveKit version: " << LIVEKIT_BUILD_VERSION_FULL << " (" << LIVEKIT_BUILD_FLAVOR << ", commit "
+            << LIVEKIT_BUILD_COMMIT << ", built " << LIVEKIT_BUILD_DATE << ")" << std::endl;
 }
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   print_livekit_version();
   std::string url, token;
   bool enable_e2ee = false;
@@ -290,8 +266,7 @@ int main(int argc, char *argv[]) {
     }
     options.encryption = encryption;
     if (!e2ee_key.empty()) {
-      std::cout << "[E2EE] enabled : (shared key length=" << e2ee_key.size()
-                << ")\n";
+      std::cout << "[E2EE] enabled : (shared key length=" << e2ee_key.size() << ")\n";
     } else {
       std::cout << "[E2EE] enabled: (no shared key set)\n";
     }
@@ -313,20 +288,16 @@ int main(int argc, char *argv[]) {
             << "  Max participants: " << info.max_participants << "\n"
             << "  Num participants: " << info.num_participants << "\n"
             << "  Num publishers: " << info.num_publishers << "\n"
-            << "  Active recording: " << (info.active_recording ? "yes" : "no")
-            << "\n"
+            << "  Active recording: " << (info.active_recording ? "yes" : "no") << "\n"
             << "  Empty timeout (s): " << info.empty_timeout << "\n"
             << "  Departure timeout (s): " << info.departure_timeout << "\n"
-            << "  Lossy DC low threshold: "
-            << info.lossy_dc_buffered_amount_low_threshold << "\n"
-            << "  Reliable DC low threshold: "
-            << info.reliable_dc_buffered_amount_low_threshold << "\n"
+            << "  Lossy DC low threshold: " << info.lossy_dc_buffered_amount_low_threshold << "\n"
+            << "  Reliable DC low threshold: " << info.reliable_dc_buffered_amount_low_threshold << "\n"
             << "  Creation time (ms): " << info.creation_time << "\n";
 
   // Setup Audio Source / Track
   auto audioSource = std::make_shared<AudioSource>(44100, 1, 0);
-  auto audioTrack =
-      LocalAudioTrack::createLocalAudioTrack("micTrack", audioSource);
+  auto audioTrack = LocalAudioTrack::createLocalAudioTrack("micTrack", audioSource);
 
   TrackPublishOptions audioOpts;
   audioOpts.source = TrackSource::SOURCE_MICROPHONE;
@@ -341,10 +312,9 @@ int main(int argc, char *argv[]) {
               << "  Name: " << audioPub->name() << "\n"
               << "  Kind: " << static_cast<int>(audioPub->kind()) << "\n"
               << "  Source: " << static_cast<int>(audioPub->source()) << "\n"
-              << "  Simulcasted: " << std::boolalpha << audioPub->simulcasted()
-              << "\n"
+              << "  Simulcasted: " << std::boolalpha << audioPub->simulcasted() << "\n"
               << "  Muted: " << std::boolalpha << audioPub->muted() << "\n";
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::cerr << "[error] Failed to publish track: " << e.what() << "\n";
   }
 
@@ -370,10 +340,9 @@ int main(int argc, char *argv[]) {
               << "  Name: " << videoPub->name() << "\n"
               << "  Kind: " << static_cast<int>(videoPub->kind()) << "\n"
               << "  Source: " << static_cast<int>(videoPub->source()) << "\n"
-              << "  Simulcasted: " << std::boolalpha << videoPub->simulcasted()
-              << "\n"
+              << "  Simulcasted: " << std::boolalpha << videoPub->simulcasted() << "\n"
               << "  Muted: " << std::boolalpha << videoPub->muted() << "\n";
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::cerr << "[error] Failed to publish track: " << e.what() << "\n";
   }
   media.startCamera(videoSource);

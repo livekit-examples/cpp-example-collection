@@ -23,35 +23,35 @@
 /// Or via environment variables:
 ///   LIVEKIT_URL, LIVEKIT_SENDER_TOKEN
 
-#include "livekit/livekit.h"
-
 #include <atomic>
 #include <cassert>
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <thread>
-#include <iostream>
+
+#include "livekit/livekit.h"
 
 using namespace livekit;
 
 constexpr int kWidth = 640;
 constexpr int kHeight = 480;
-constexpr const char *kVideoTrackName = "camera0";
-constexpr const char *kDataTrackName = "app-data";
+constexpr const char* kVideoTrackName = "camera0";
+constexpr const char* kDataTrackName = "app-data";
 
 std::atomic<bool> g_running{true};
 
 void handleSignal(int) { g_running.store(false); }
 
-std::string getenvOrEmpty(const char *name) {
-  const char *v = std::getenv(name);
+std::string getenvOrEmpty(const char* name) {
+  const char* v = std::getenv(name);
   return v ? std::string(v) : std::string{};
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   std::string url = getenvOrEmpty("LIVEKIT_URL");
   std::string sender_token = getenvOrEmpty("LIVEKIT_SENDER_TOKEN");
 
@@ -61,7 +61,8 @@ int main(int argc, char *argv[]) {
   }
 
   if (url.empty() || sender_token.empty()) {
-    std::cerr << "[error] Usage: HelloLivekitSender <ws-url> <sender-token>\n  or set LIVEKIT_URL, LIVEKIT_SENDER_TOKEN\n";
+    std::cerr
+        << "[error] Usage: HelloLivekitSender <ws-url> <sender-token>\n  or set LIVEKIT_URL, LIVEKIT_SENDER_TOKEN\n";
     return 1;
   }
 
@@ -83,20 +84,22 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  LocalParticipant *lp = room->localParticipant();
+  LocalParticipant* lp = room->localParticipant();
   assert(lp);
 
-  std::cout << "[info] [sender] Connected as identity='" << lp->identity() << "' room='" << room->room_info().name << "' — pass this identity to HelloLivekitReceiver\n";
+  std::cout << "[info] [sender] Connected as identity='" << lp->identity() << "' room='" << room->room_info().name
+            << "' — pass this identity to HelloLivekitReceiver\n";
 
   auto video_source = std::make_shared<VideoSource>(kWidth, kHeight);
 
-  std::shared_ptr<LocalVideoTrack> video_track = lp->publishVideoTrack(
-      kVideoTrackName, video_source, TrackSource::SOURCE_CAMERA);
+  std::shared_ptr<LocalVideoTrack> video_track =
+      lp->publishVideoTrack(kVideoTrackName, video_source, TrackSource::SOURCE_CAMERA);
 
   auto publish_result = lp->publishDataTrack(kDataTrackName);
   if (!publish_result) {
-    const auto &error = publish_result.error();
-    std::cerr << "[error] Failed to publish data track: code=" << static_cast<std::uint32_t>(error.code) << " message=" << error.message << "\n";
+    const auto& error = publish_result.error();
+    std::cerr << "[error] Failed to publish data track: code=" << static_cast<std::uint32_t>(error.code)
+              << " message=" << error.message << "\n";
     room.reset();
     livekit::shutdown();
     return 1;
@@ -113,16 +116,15 @@ int main(int argc, char *argv[]) {
     video_source->captureFrame(std::move(vf));
 
     const auto now = std::chrono::steady_clock::now();
-    const double ms =
-        std::chrono::duration<double, std::milli>(now - t0).count();
+    const double ms = std::chrono::duration<double, std::milli>(now - t0).count();
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(2) << ms << " ms, count: " << count;
     const std::string msg = oss.str();
-    auto push_result =
-        data_track->tryPush(std::vector<std::uint8_t>(msg.begin(), msg.end()));
+    auto push_result = data_track->tryPush(std::vector<std::uint8_t>(msg.begin(), msg.end()));
     if (!push_result) {
-      const auto &error = push_result.error();
-      std::cerr << "[warn] Failed to push data frame: code=" << static_cast<std::uint32_t>(error.code) << " message=" << error.message << "\n";
+      const auto& error = push_result.error();
+      std::cerr << "[warn] Failed to push data frame: code=" << static_cast<std::uint32_t>(error.code)
+                << " message=" << error.message << "\n";
     }
 
     ++count;

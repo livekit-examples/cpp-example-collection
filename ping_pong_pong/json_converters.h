@@ -16,16 +16,16 @@
 
 #pragma once
 
-#include "messages.h"
-
 #include <string>
+
+#include "messages.h"
 
 namespace ping_pong {
 
-std::string pingMessageToJson(const PingMessage &message);
-PingMessage pingMessageFromJson(const std::string &json);
+std::string pingMessageToJson(const PingMessage& message);
+PingMessage pingMessageFromJson(const std::string& json);
 
-std::string pongMessageToJson(const PongMessage &message);
-PongMessage pongMessageFromJson(const std::string &json);
+std::string pongMessageToJson(const PongMessage& message);
+PongMessage pongMessageFromJson(const std::string& json);
 
 } // namespace ping_pong
