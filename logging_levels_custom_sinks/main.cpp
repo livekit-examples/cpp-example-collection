@@ -34,8 +34,6 @@
 ///
 /// If no argument is given, all three sinks are demonstrated in sequence.
 
-#include "livekit/livekit.h"
-
 #include <chrono>
 #include <cstring>
 #include <fstream>
@@ -43,28 +41,30 @@
 #include <iostream>
 #include <sstream>
 
+#include "livekit/livekit.h"
+
 namespace {
 
 // ---------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------
 
-const char *levelTag(livekit::LogLevel level) {
+const char* levelTag(livekit::LogLevel level) {
   switch (level) {
-  case livekit::LogLevel::Trace:
-    return "TRACE";
-  case livekit::LogLevel::Debug:
-    return "DEBUG";
-  case livekit::LogLevel::Info:
-    return "INFO";
-  case livekit::LogLevel::Warn:
-    return "WARN";
-  case livekit::LogLevel::Error:
-    return "ERROR";
-  case livekit::LogLevel::Critical:
-    return "CRITICAL";
-  case livekit::LogLevel::Off:
-    return "OFF";
+    case livekit::LogLevel::Trace:
+      return "TRACE";
+    case livekit::LogLevel::Debug:
+      return "DEBUG";
+    case livekit::LogLevel::Info:
+      return "INFO";
+    case livekit::LogLevel::Warn:
+      return "WARN";
+    case livekit::LogLevel::Error:
+      return "ERROR";
+    case livekit::LogLevel::Critical:
+      return "CRITICAL";
+    case livekit::LogLevel::Off:
+      return "OFF";
   }
   return "?";
 }
@@ -72,18 +72,15 @@ const char *levelTag(livekit::LogLevel level) {
 std::string nowISO8601() {
   auto now = std::chrono::system_clock::now();
   auto tt = std::chrono::system_clock::to_time_t(now);
-  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                now.time_since_epoch()) %
-            1000;
+  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
   std::ostringstream ss;
-  ss << std::put_time(std::gmtime(&tt), "%FT%T") << '.' << std::setfill('0')
-     << std::setw(3) << ms.count() << 'Z';
+  ss << std::put_time(std::gmtime(&tt), "%FT%T") << '.' << std::setfill('0') << std::setw(3) << ms.count() << 'Z';
   return ss.str();
 }
 
 struct SampleLog {
   livekit::LogLevel level;
-  const char *message;
+  const char* message;
 };
 
 // Representative messages that the SDK would emit during normal operation.
@@ -98,8 +95,8 @@ const SampleLog kSampleLogs[] = {
     {livekit::LogLevel::Critical, "out of memory allocating decode buffer"},
 };
 
-void driveCallback(const livekit::LogCallback &cb) {
-  for (const auto &entry : kSampleLogs) {
+void driveCallback(const livekit::LogCallback& cb) {
+  for (const auto& entry : kSampleLogs) {
     cb(entry.level, "livekit", entry.message);
   }
 }
@@ -109,7 +106,7 @@ void driveCallback(const livekit::LogCallback &cb) {
 // ---------------------------------------------------------------
 
 void runFileSinkDemo() {
-  const char *path = "livekit.log";
+  const char* path = "livekit.log";
   std::cout << "\n=== File sink: writing SDK logs to '" << path << "' ===\n";
 
   auto file = std::make_shared<std::ofstream>(path, std::ios::trunc);
@@ -120,11 +117,9 @@ void runFileSinkDemo() {
 
   // The shared_ptr keeps the stream alive inside the lambda even if
   // the local variable goes out of scope before the callback fires.
-  livekit::LogCallback fileSink = [file](livekit::LogLevel level,
-                                         const std::string &logger_name,
-                                         const std::string &message) {
-    *file << nowISO8601() << " [" << levelTag(level) << "] [" << logger_name
-          << "] " << message << "\n";
+  livekit::LogCallback fileSink = [file](livekit::LogLevel level, const std::string& logger_name,
+                                         const std::string& message) {
+    *file << nowISO8601() << " [" << levelTag(level) << "] [" << logger_name << "] " << message << "\n";
     file->flush();
   };
 
@@ -148,28 +143,28 @@ void runFileSinkDemo() {
 // 2. JSON structured logger
 // ---------------------------------------------------------------
 
-std::string escapeJson(const std::string &s) {
+std::string escapeJson(const std::string& s) {
   std::string out;
   out.reserve(s.size() + 8);
   for (char c : s) {
     switch (c) {
-    case '"':
-      out += "\\\"";
-      break;
-    case '\\':
-      out += "\\\\";
-      break;
-    case '\n':
-      out += "\\n";
-      break;
-    case '\r':
-      out += "\\r";
-      break;
-    case '\t':
-      out += "\\t";
-      break;
-    default:
-      out += c;
+      case '"':
+        out += "\\\"";
+        break;
+      case '\\':
+        out += "\\\\";
+        break;
+      case '\n':
+        out += "\\n";
+        break;
+      case '\r':
+        out += "\\r";
+        break;
+      case '\t':
+        out += "\\t";
+        break;
+      default:
+        out += c;
     }
   }
   return out;
@@ -178,12 +173,10 @@ std::string escapeJson(const std::string &s) {
 void runJsonSinkDemo() {
   std::cout << "\n=== JSON sink: structured log lines to stdout ===\n\n";
 
-  livekit::LogCallback jsonSink = [](livekit::LogLevel level,
-                                     const std::string &logger_name,
-                                     const std::string &message) {
-    std::cout << R"({"ts":")" << nowISO8601() << R"(","level":")"
-              << levelTag(level) << R"(","logger":")" << escapeJson(logger_name)
-              << R"(","msg":")" << escapeJson(message) << "\"}\n";
+  livekit::LogCallback jsonSink = [](livekit::LogLevel level, const std::string& logger_name,
+                                     const std::string& message) {
+    std::cout << R"({"ts":")" << nowISO8601() << R"(","level":")" << levelTag(level) << R"(","logger":")"
+              << escapeJson(logger_name) << R"(","msg":")" << escapeJson(message) << "\"}\n";
   };
 
   livekit::setLogCallback(jsonSink);
@@ -227,37 +220,33 @@ void runRos2SinkDemo() {
 
   const std::string node_name = "livekit_bridge_node";
 
-  livekit::LogCallback ros2Sink = [&node_name](livekit::LogLevel level,
-                                               const std::string &logger_name,
-                                               const std::string &message) {
-    const char *ros_level;
+  livekit::LogCallback ros2Sink = [&node_name](livekit::LogLevel level, const std::string& logger_name,
+                                               const std::string& message) {
+    const char* ros_level;
     switch (level) {
-    case livekit::LogLevel::Trace:
-    case livekit::LogLevel::Debug:
-      ros_level = "DEBUG";
-      break;
-    case livekit::LogLevel::Info:
-      ros_level = "INFO";
-      break;
-    case livekit::LogLevel::Warn:
-      ros_level = "WARN";
-      break;
-    case livekit::LogLevel::Error:
-    case livekit::LogLevel::Critical:
-      ros_level = "ERROR";
-      break;
-    default:
-      ros_level = "INFO";
-      break;
+      case livekit::LogLevel::Trace:
+      case livekit::LogLevel::Debug:
+        ros_level = "DEBUG";
+        break;
+      case livekit::LogLevel::Info:
+        ros_level = "INFO";
+        break;
+      case livekit::LogLevel::Warn:
+        ros_level = "WARN";
+        break;
+      case livekit::LogLevel::Error:
+      case livekit::LogLevel::Critical:
+        ros_level = "ERROR";
+        break;
+      default:
+        ros_level = "INFO";
+        break;
     }
 
     // Mimic: [INFO] [1719500000.123] [livekit_bridge_node]: [livekit] msg
-    auto epoch_s = std::chrono::duration<double>(
-                       std::chrono::system_clock::now().time_since_epoch())
-                       .count();
-    std::cout << "[" << ros_level << "] [" << std::fixed << std::setprecision(3)
-              << epoch_s << "] [" << node_name << "]: [" << logger_name << "] "
-              << message << "\n";
+    auto epoch_s = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+    std::cout << "[" << ros_level << "] [" << std::fixed << std::setprecision(3) << epoch_s << "] [" << node_name
+              << "]: [" << logger_name << "] " << message << "\n";
   };
 
   livekit::setLogCallback(ros2Sink);
@@ -267,7 +256,7 @@ void runRos2SinkDemo() {
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   livekit::initialize();
 
   if (argc > 1) {

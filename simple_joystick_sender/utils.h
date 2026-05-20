@@ -26,6 +26,6 @@ namespace simple_joystick {
 ///   - Flags:       --url=<val> / --url <val>, --token=<val> / --token <val>
 ///   - Env vars:    LIVEKIT_URL, LIVEKIT_TOKEN
 /// Returns true if both url and token were resolved, false otherwise.
-bool parseArgs(int argc, char *argv[], std::string &url, std::string &token);
+bool parseArgs(int argc, char* argv[], std::string& url, std::string& token);
 
 } // namespace simple_joystick

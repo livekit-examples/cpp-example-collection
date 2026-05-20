@@ -23,7 +23,7 @@
 // --------------------------------------------------
 // Minimal WAV loader (16-bit PCM only)
 // --------------------------------------------------
-WavData load_wav16(const std::string &path) {
+WavData load_wav16(const std::string& path) {
   std::ifstream file(path, std::ios::binary);
   if (!file) {
     throw std::runtime_error("Failed to open WAV file: " + path +
@@ -31,12 +31,8 @@ WavData load_wav16(const std::string &path) {
                              "LFS is installed and run `git lfs pull`)");
   }
 
-  auto read_u32 = [&](uint32_t &out_value) {
-    file.read(reinterpret_cast<char *>(&out_value), 4);
-  };
-  auto read_u16 = [&](uint16_t &out_value) {
-    file.read(reinterpret_cast<char *>(&out_value), 2);
-  };
+  auto read_u32 = [&](uint32_t& out_value) { file.read(reinterpret_cast<char*>(&out_value), 4); };
+  auto read_u16 = [&](uint16_t& out_value) { file.read(reinterpret_cast<char*>(&out_value), 2); };
 
   char riff[4];
   file.read(riff, 4);
@@ -101,7 +97,7 @@ WavData load_wav16(const std::string &path) {
       have_data = true;
       const std::size_t count = sub_size / sizeof(int16_t);
       samples.resize(count);
-      file.read(reinterpret_cast<char *>(samples.data()), sub_size);
+      file.read(reinterpret_cast<char*>(samples.data()), sub_size);
 
     } else {
       // Unknown chunk: skip it
@@ -120,8 +116,7 @@ WavData load_wav16(const std::string &path) {
   return out;
 }
 
-WavAudioSource::WavAudioSource(const std::string &path,
-                               int expected_sample_rate, int expected_channels,
+WavAudioSource::WavAudioSource(const std::string& path, int expected_sample_rate, int expected_channels,
                                bool loop_enabled)
     : loop_enabled_(loop_enabled) {
   wav_ = load_wav16(path);
@@ -139,12 +134,11 @@ WavAudioSource::WavAudioSource(const std::string &path,
   playhead_ = 0;
 }
 
-void WavAudioSource::fillFrame(AudioFrame &frame) {
+void WavAudioSource::fillFrame(AudioFrame& frame) {
   const std::size_t frame_samples =
-      static_cast<std::size_t>(frame.num_channels()) *
-      static_cast<std::size_t>(frame.samples_per_channel());
+      static_cast<std::size_t>(frame.num_channels()) * static_cast<std::size_t>(frame.samples_per_channel());
 
-  int16_t *dst = frame.data().data();
+  int16_t* dst = frame.data().data();
   const std::size_t total_wav_samples = wav_.samples.size();
 
   for (std::size_t i = 0; i < frame_samples; ++i) {

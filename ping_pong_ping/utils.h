@@ -24,8 +24,8 @@
 
 namespace ping_pong {
 
-inline std::string getenvOrEmpty(const char *name) {
-  const char *value = std::getenv(name);
+inline std::string getenvOrEmpty(const char* name) {
+  const char* value = std::getenv(name);
   return value ? std::string(value) : std::string{};
 }
 
@@ -34,11 +34,11 @@ inline std::int64_t timeSinceEpochNs() {
   return std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
 }
 
-inline std::vector<std::uint8_t> toPayload(const std::string &json) {
+inline std::vector<std::uint8_t> toPayload(const std::string& json) {
   return std::vector<std::uint8_t>(json.begin(), json.end());
 }
 
-inline std::string toString(const std::vector<std::uint8_t> &payload) {
+inline std::string toString(const std::vector<std::uint8_t>& payload) {
   return std::string(payload.begin(), payload.end());
 }
 

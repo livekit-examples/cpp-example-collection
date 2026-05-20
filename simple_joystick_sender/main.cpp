@@ -75,8 +75,7 @@ int readKeyNonBlocking() {
   struct timeval tv = {0, 0}; // immediate return
   if (select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) > 0) {
     unsigned char ch;
-    if (read(STDIN_FILENO, &ch, 1) == 1)
-      return ch;
+    if (read(STDIN_FILENO, &ch, 1) == 1) return ch;
   }
   return -1;
 }
@@ -85,13 +84,12 @@ void enableRawMode() { /* Windows _getch() is already unbuffered */ }
 void disableRawMode() {}
 
 int readKeyNonBlocking() {
-  if (_kbhit())
-    return _getch();
+  if (_kbhit()) return _getch();
   return -1;
 }
 #endif
 
-void printUsage(const char *prog) {
+void printUsage(const char* prog) {
   std::cerr << "Usage:\n"
             << "  " << prog << " <ws-url> <token>\n"
             << "or:\n"
@@ -119,7 +117,7 @@ void printControls() {
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   std::string url, token;
   if (!simple_joystick::parseArgs(argc, argv, url, token)) {
     printUsage(argv[0]);
@@ -152,7 +150,7 @@ int main(int argc, char *argv[]) {
   std::cout << "[Sender] Waiting for 'robot' to join (checking every 2s)...\n";
   printControls();
 
-  LocalParticipant *lp = room->localParticipant();
+  LocalParticipant* lp = room->localParticipant();
   double x = 0.0, y = 0.0, z = 0.0;
   bool receiver_connected = false;
   auto last_receiver_check = std::chrono::steady_clock::now();
@@ -165,12 +163,10 @@ int main(int argc, char *argv[]) {
       bool receiver_present = (room->remoteParticipant("robot") != nullptr);
 
       if (receiver_present && !receiver_connected) {
-        std::cout
-            << "[Sender] Receiver connected! Use keys to send commands.\n";
+        std::cout << "[Sender] Receiver connected! Use keys to send commands.\n";
         receiver_connected = true;
       } else if (!receiver_present && receiver_connected) {
-        std::cout
-            << "[Sender] Receiver disconnected. Waiting for reconnect...\n";
+        std::cout << "[Sender] Receiver disconnected. Waiting for reconnect...\n";
         receiver_connected = false;
       }
     }
@@ -191,46 +187,44 @@ int main(int argc, char *argv[]) {
     // Map key to axis change
     bool changed = false;
     switch (key) {
-    case 'w':
-    case 'W':
-      x += 1.0;
-      changed = true;
-      break;
-    case 's':
-    case 'S':
-      x -= 1.0;
-      changed = true;
-      break;
-    case 'd':
-    case 'D':
-      y += 1.0;
-      changed = true;
-      break;
-    case 'a':
-    case 'A':
-      y -= 1.0;
-      changed = true;
-      break;
-    case 'z':
-    case 'Z':
-      z += 1.0;
-      changed = true;
-      break;
-    case 'c':
-    case 'C':
-      z -= 1.0;
-      changed = true;
-      break;
-    default:
-      break;
+      case 'w':
+      case 'W':
+        x += 1.0;
+        changed = true;
+        break;
+      case 's':
+      case 'S':
+        x -= 1.0;
+        changed = true;
+        break;
+      case 'd':
+      case 'D':
+        y += 1.0;
+        changed = true;
+        break;
+      case 'a':
+      case 'A':
+        y -= 1.0;
+        changed = true;
+        break;
+      case 'z':
+      case 'Z':
+        z += 1.0;
+        changed = true;
+        break;
+      case 'c':
+      case 'C':
+        z -= 1.0;
+        changed = true;
+        break;
+      default:
+        break;
     }
 
-    if (!changed)
-      continue;
+    if (!changed) continue;
 
     if (!receiver_connected) {
-      std::cout << "[Sender] (no receiver connected) x=" << x << " y=" << y
-                << " z=" << z << "\n";
+      std::cout << "[Sender] (no receiver connected) x=" << x << " y=" << y << " z=" << z << "\n";
       continue;
     }
 
@@ -238,22 +232,18 @@ int main(int argc, char *argv[]) {
     simple_joystick::JoystickCommand cmd{x, y, z};
     std::string payload = simple_joystick::joystick_to_json(cmd);
 
-    std::cout << "[Sender] Sending: x=" << x << " y=" << y << " z=" << z
-              << "\n";
+    std::cout << "[Sender] Sending: x=" << x << " y=" << y << " z=" << z << "\n";
 
     try {
-      std::string response =
-          lp->performRpc("robot", "joystick_command", payload, 5.0);
+      std::string response = lp->performRpc("robot", "joystick_command", payload, 5.0);
       std::cout << "[Sender] Receiver acknowledged: " << response << "\n";
-    } catch (const RpcError &e) {
+    } catch (const RpcError& e) {
       std::cerr << "[Sender] RPC error: " << e.message() << "\n";
-      if (static_cast<RpcError::ErrorCode>(e.code()) ==
-          RpcError::ErrorCode::RECIPIENT_DISCONNECTED) {
-        std::cout
-            << "[Sender] Receiver disconnected. Waiting for reconnect...\n";
+      if (static_cast<RpcError::ErrorCode>(e.code()) == RpcError::ErrorCode::RECIPIENT_DISCONNECTED) {
+        std::cout << "[Sender] Receiver disconnected. Waiting for reconnect...\n";
         receiver_connected = false;
       }
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
       std::cerr << "[Sender] Error sending command: " << e.what() << "\n";
     }
   }

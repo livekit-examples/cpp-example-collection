@@ -21,7 +21,7 @@
 
 namespace simple_joystick {
 
-std::string joystick_to_json(const JoystickCommand &cmd) {
+std::string joystick_to_json(const JoystickCommand& cmd) {
   nlohmann::json j;
   j["x"] = cmd.x;
   j["y"] = cmd.y;
@@ -29,7 +29,7 @@ std::string joystick_to_json(const JoystickCommand &cmd) {
   return j.dump();
 }
 
-JoystickCommand json_to_joystick(const std::string &json) {
+JoystickCommand json_to_joystick(const std::string& json) {
   try {
     auto j = nlohmann::json::parse(json);
     JoystickCommand cmd;
@@ -37,9 +37,8 @@ JoystickCommand json_to_joystick(const std::string &json) {
     cmd.y = j.at("y").get<double>();
     cmd.z = j.at("z").get<double>();
     return cmd;
-  } catch (const nlohmann::json::exception &e) {
-    throw std::runtime_error(std::string("Failed to parse joystick JSON: ") +
-                             e.what());
+  } catch (const nlohmann::json::exception& e) {
+    throw std::runtime_error(std::string("Failed to parse joystick JSON: ") + e.what());
   }
 }
 

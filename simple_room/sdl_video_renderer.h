@@ -17,6 +17,7 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+
 #include <atomic>
 #include <memory>
 #include <thread>
@@ -31,7 +32,7 @@ public:
   ~SDLVideoRenderer();
 
   // Must be called on main thread, after SDL_Init(SDL_INIT_VIDEO).
-  bool init(const char *title, int width, int height);
+  bool init(const char* title, int width, int height);
 
   // Set/replace the stream to render. Safe to call from main thread.
   void setStream(std::shared_ptr<livekit::VideoStream> stream);
@@ -42,9 +43,9 @@ public:
   void shutdown(); // destroy window/renderer/texture
 
 private:
-  SDL_Window *window_ = nullptr;
-  SDL_Renderer *renderer_ = nullptr;
-  SDL_Texture *texture_ = nullptr;
+  SDL_Window* window_ = nullptr;
+  SDL_Renderer* renderer_ = nullptr;
+  SDL_Texture* texture_ = nullptr;
 
   std::shared_ptr<livekit::VideoStream> stream_;
   int width_ = 0;

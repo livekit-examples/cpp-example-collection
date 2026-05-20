@@ -22,7 +22,7 @@
 
 namespace simple_joystick {
 
-bool parseArgs(int argc, char *argv[], std::string &url, std::string &token) {
+bool parseArgs(int argc, char* argv[], std::string& url, std::string& token) {
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     if (a == "-h" || a == "--help") {
@@ -30,7 +30,7 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token) {
     }
   }
 
-  auto get_flag_value = [&](const std::string &name, int &i) -> std::string {
+  auto get_flag_value = [&](const std::string& name, int& i) -> std::string {
     std::string arg = argv[i];
     const std::string eq = name + "=";
     if (arg.rfind(name, 0) == 0) {
@@ -47,12 +47,10 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token) {
     const std::string a = argv[i];
     if (a.rfind("--url", 0) == 0) {
       auto v = get_flag_value("--url", i);
-      if (!v.empty())
-        url = v;
+      if (!v.empty()) url = v;
     } else if (a.rfind("--token", 0) == 0) {
       auto v = get_flag_value("--token", i);
-      if (!v.empty())
-        token = v;
+      if (!v.empty()) token = v;
     }
   }
 
@@ -60,25 +58,20 @@ bool parseArgs(int argc, char *argv[], std::string &url, std::string &token) {
   std::vector<std::string> pos;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
-    if (a.rfind("--", 0) == 0)
-      continue;
+    if (a.rfind("--", 0) == 0) continue;
     pos.push_back(std::move(a));
   }
-  if (url.empty() && pos.size() >= 1)
-    url = pos[0];
-  if (token.empty() && pos.size() >= 2)
-    token = pos[1];
+  if (url.empty() && pos.size() >= 1) url = pos[0];
+  if (token.empty() && pos.size() >= 2) token = pos[1];
 
   // Environment variable fallbacks
   if (url.empty()) {
-    const char *e = std::getenv("LIVEKIT_URL");
-    if (e)
-      url = e;
+    const char* e = std::getenv("LIVEKIT_URL");
+    if (e) url = e;
   }
   if (token.empty()) {
-    const char *e = std::getenv("LIVEKIT_TOKEN");
-    if (e)
-      token = e;
+    const char* e = std::getenv("LIVEKIT_TOKEN");
+    if (e) token = e;
   }
 
   return !(url.empty() || token.empty());

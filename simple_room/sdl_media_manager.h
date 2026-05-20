@@ -16,13 +16,13 @@
 
 #pragma once
 
-#include <atomic>
-#include <memory>
-#include <thread>
-
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_audio.h>
 #include <SDL3/SDL_camera.h>
+
+#include <atomic>
+#include <memory>
+#include <thread>
 
 #include "wav_audio_source.h"
 
@@ -49,20 +49,20 @@ public:
   ~SDLMediaManager();
 
   // Mic (local capture -> AudioSource)
-  bool startMic(const std::shared_ptr<livekit::AudioSource> &audio_source);
+  bool startMic(const std::shared_ptr<livekit::AudioSource>& audio_source);
   void stopMic();
 
   // Camera (local capture -> VideoSource)
-  bool startCamera(const std::shared_ptr<livekit::VideoSource> &video_source);
+  bool startCamera(const std::shared_ptr<livekit::VideoSource>& video_source);
   void stopCamera();
 
   // Speaker (remote audio playback)
-  bool startSpeaker(const std::shared_ptr<livekit::AudioStream> &audio_stream);
+  bool startSpeaker(const std::shared_ptr<livekit::AudioStream>& audio_stream);
   void stopSpeaker();
 
   // Renderer (remote video rendering)
   // Following APIs must be called on main thread
-  bool initRenderer(const std::shared_ptr<VideoStream> &video_stream);
+  bool initRenderer(const std::shared_ptr<VideoStream>& video_stream);
   void shutdownRenderer();
   void render();
 
@@ -99,7 +99,7 @@ private:
   std::shared_ptr<livekit::AudioStream> speaker_stream_;
   std::thread speaker_thread_;
   std::atomic<bool> speaker_running_{false};
-  SDL_AudioStream *sdl_audio_stream_ = nullptr;
+  SDL_AudioStream* sdl_audio_stream_ = nullptr;
 
   // Renderer (remote video) – left mostly as a placeholder
   std::unique_ptr<SDLVideoRenderer> sdl_renderer_;

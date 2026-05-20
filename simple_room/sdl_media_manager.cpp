@@ -16,13 +16,14 @@
 
 #include "sdl_media_manager.h"
 
+#include <cstring>
+#include <iostream>
+#include <vector>
+
 #include "fallback_capture.h"
 #include "livekit/livekit.h"
-#include <iostream>
 #include "sdl_media.h"
 #include "sdl_video_renderer.h"
-#include <cstring>
-#include <vector>
 using namespace livekit;
 
 SDLMediaManager::SDLMediaManager() = default;
@@ -47,8 +48,7 @@ bool SDLMediaManager::ensureSDLInit(Uint32 flags) {
 
 // ---------- Mic control ----------
 
-bool SDLMediaManager::startMic(
-    const std::shared_ptr<AudioSource> &audio_source) {
+bool SDLMediaManager::startMic(const std::shared_ptr<AudioSource>& audio_source) {
   stopMic();
 
   if (!audio_source) {
@@ -63,20 +63,17 @@ bool SDLMediaManager::startMic(
   if (!ensureSDLInit(SDL_INIT_AUDIO)) {
     std::cerr << "[warn] No SDL audio, falling back to noise loop.\n";
     mic_using_sdl_ = false;
-    mic_thread_ =
-        std::thread(runNoiseCaptureLoop, mic_source_, std::ref(mic_running_));
+    mic_thread_ = std::thread(runNoiseCaptureLoop, mic_source_, std::ref(mic_running_));
     return true;
   }
 
   int recCount = 0;
-  SDL_AudioDeviceID *recDevs = SDL_GetAudioRecordingDevices(&recCount);
+  SDL_AudioDeviceID* recDevs = SDL_GetAudioRecordingDevices(&recCount);
   if (!recDevs || recCount == 0) {
     std::cerr << "[warn] No microphone devices found, falling back to noise loop.\n";
-    if (recDevs)
-      SDL_free(recDevs);
+    if (recDevs) SDL_free(recDevs);
     mic_using_sdl_ = false;
-    mic_thread_ =
-        std::thread(runNoiseCaptureLoop, mic_source_, std::ref(mic_running_));
+    mic_thread_ = std::thread(runNoiseCaptureLoop, mic_source_, std::ref(mic_running_));
     return true;
   }
   SDL_free(recDevs);
@@ -87,15 +84,12 @@ bool SDLMediaManager::startMic(
   mic_sdl_ = std::make_unique<SDLMicSource>(
       mic_source_->sample_rate(), mic_source_->num_channels(),
       mic_source_->sample_rate() / 100, // ~10ms
-      [src = mic_source_](const int16_t *samples, int num_samples_per_channel,
-                          int sample_rate, int num_channels) {
-        AudioFrame frame = AudioFrame::create(sample_rate, num_channels,
-                                              num_samples_per_channel);
-        std::memcpy(frame.data().data(), samples,
-                    num_samples_per_channel * num_channels * sizeof(int16_t));
+      [src = mic_source_](const int16_t* samples, int num_samples_per_channel, int sample_rate, int num_channels) {
+        AudioFrame frame = AudioFrame::create(sample_rate, num_channels, num_samples_per_channel);
+        std::memcpy(frame.data().data(), samples, num_samples_per_channel * num_channels * sizeof(int16_t));
         try {
           src->captureFrame(frame);
-        } catch (const std::exception &e) {
+        } catch (const std::exception& e) {
           std::cerr << "[error] Error in captureFrame (SDL mic): " << e.what() << "\n";
         }
       });
@@ -104,8 +98,7 @@ bool SDLMediaManager::startMic(
     std::cerr << "[warn] Failed to init SDL mic, falling back to noise loop.\n";
     mic_using_sdl_ = false;
     mic_sdl_.reset();
-    mic_thread_ =
-        std::thread(runNoiseCaptureLoop, mic_source_, std::ref(mic_running_));
+    mic_thread_ = std::thread(runNoiseCaptureLoop, mic_source_, std::ref(mic_running_));
     return true;
   }
 
@@ -131,8 +124,7 @@ void SDLMediaManager::stopMic() {
 
 // ---------- Camera control ----------
 
-bool SDLMediaManager::startCamera(
-    const std::shared_ptr<VideoSource> &video_source) {
+bool SDLMediaManager::startCamera(const std::shared_ptr<VideoSource>& video_source) {
   stopCamera();
 
   if (!video_source) {
@@ -147,54 +139,48 @@ bool SDLMediaManager::startCamera(
   if (!ensureSDLInit(SDL_INIT_CAMERA)) {
     std::cerr << "[warn] No SDL camera subsystem, using fake video loop.\n";
     cam_using_sdl_ = false;
-    cam_thread_ = std::thread(runFakeVideoCaptureLoop, cam_source_,
-                              std::ref(cam_running_));
+    cam_thread_ = std::thread(runFakeVideoCaptureLoop, cam_source_, std::ref(cam_running_));
     return true;
   }
 
   int camCount = 0;
-  SDL_CameraID *cams = SDL_GetCameras(&camCount);
+  SDL_CameraID* cams = SDL_GetCameras(&camCount);
   if (!cams || camCount == 0) {
     std::cerr << "[warn] No camera devices found, using fake video loop.\n";
-    if (cams)
-      SDL_free(cams);
+    if (cams) SDL_free(cams);
     cam_using_sdl_ = false;
-    cam_thread_ = std::thread(runFakeVideoCaptureLoop, cam_source_,
-                              std::ref(cam_running_));
+    cam_thread_ = std::thread(runFakeVideoCaptureLoop, cam_source_, std::ref(cam_running_));
     return true;
   }
   SDL_free(cams);
 
   cam_using_sdl_ = true;
-  can_sdl_ = std::make_unique<SDLCamSource>(
-      1280, 720, 30,
-      SDL_PIXELFORMAT_RGBA32, // Note SDL_PIXELFORMAT_RGBA8888 is not compatable
-                              // with Livekit RGBA format.
-      [src = cam_source_](const uint8_t *pixels, int pitch, int width,
-                          int height, SDL_PixelFormat /*fmt*/,
-                          Uint64 timestampNS) {
-        auto frame = VideoFrame::create(width, height, VideoBufferType::RGBA);
-        uint8_t *dst = frame.data();
-        const int dstPitch = width * 4;
+  can_sdl_ =
+      std::make_unique<SDLCamSource>(1280, 720, 30,
+                                     SDL_PIXELFORMAT_RGBA32, // Note SDL_PIXELFORMAT_RGBA8888 is not compatable
+                                                             // with Livekit RGBA format.
+                                     [src = cam_source_](const uint8_t* pixels, int pitch, int width, int height,
+                                                         SDL_PixelFormat /*fmt*/, Uint64 timestampNS) {
+                                       auto frame = VideoFrame::create(width, height, VideoBufferType::RGBA);
+                                       uint8_t* dst = frame.data();
+                                       const int dstPitch = width * 4;
 
-        for (int y = 0; y < height; ++y) {
-          std::memcpy(dst + y * dstPitch, pixels + y * pitch, dstPitch);
-        }
+                                       for (int y = 0; y < height; ++y) {
+                                         std::memcpy(dst + y * dstPitch, pixels + y * pitch, dstPitch);
+                                       }
 
-        try {
-          src->captureFrame(frame, timestampNS / 1000,
-                            VideoRotation::VIDEO_ROTATION_0);
-        } catch (const std::exception &e) {
-          std::cerr << "[error] Error in captureFrame (SDL cam): " << e.what() << "\n";
-        }
-      });
+                                       try {
+                                         src->captureFrame(frame, timestampNS / 1000, VideoRotation::VIDEO_ROTATION_0);
+                                       } catch (const std::exception& e) {
+                                         std::cerr << "[error] Error in captureFrame (SDL cam): " << e.what() << "\n";
+                                       }
+                                     });
 
   if (!can_sdl_->init()) {
     std::cerr << "[warn] Failed to init SDL camera, using fake video loop.\n";
     cam_using_sdl_ = false;
     can_sdl_.reset();
-    cam_thread_ = std::thread(runFakeVideoCaptureLoop, cam_source_,
-                              std::ref(cam_running_));
+    cam_thread_ = std::thread(runFakeVideoCaptureLoop, cam_source_, std::ref(cam_running_));
     return true;
   }
 
@@ -220,8 +206,7 @@ void SDLMediaManager::stopCamera() {
 
 // ---------- Speaker control (placeholder) ----------
 
-bool SDLMediaManager::startSpeaker(
-    const std::shared_ptr<AudioStream> &audio_stream) {
+bool SDLMediaManager::startSpeaker(const std::shared_ptr<AudioStream>& audio_stream) {
   stopSpeaker();
 
   if (!audio_stream) {
@@ -242,7 +227,7 @@ bool SDLMediaManager::startSpeaker(
   // format.
   try {
     speaker_thread_ = std::thread(&SDLMediaManager::speakerLoopSDL, this);
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::cerr << "[error] startSpeaker: failed to start speaker thread: " << e.what() << "\n";
     speaker_running_.store(false, std::memory_order_relaxed);
     speaker_stream_.reset();
@@ -253,7 +238,7 @@ bool SDLMediaManager::startSpeaker(
 }
 
 void SDLMediaManager::speakerLoopSDL() {
-  SDL_AudioStream *localStream = nullptr;
+  SDL_AudioStream* localStream = nullptr;
   SDL_AudioDeviceID dev = 0;
 
   while (speaker_running_.load(std::memory_order_relaxed)) {
@@ -267,8 +252,8 @@ void SDLMediaManager::speakerLoopSDL() {
       break;
     }
 
-    const livekit::AudioFrame &frame = ev.frame;
-    const auto &data = frame.data();
+    const livekit::AudioFrame& frame = ev.frame;
+    const auto& data = frame.data();
     if (data.empty()) {
       continue;
     }
@@ -281,10 +266,9 @@ void SDLMediaManager::speakerLoopSDL() {
       want.channels = static_cast<Uint8>(frame.num_channels());
       want.freq = frame.sample_rate();
 
-      localStream =
-          SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &want,
-                                    /*callback=*/nullptr,
-                                    /*userdata=*/nullptr);
+      localStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &want,
+                                              /*callback=*/nullptr,
+                                              /*userdata=*/nullptr);
 
       if (!localStream) {
         std::cerr << "[error] speakerLoopSDL: SDL_OpenAudioDeviceStream failed: " << SDL_GetError() << "\n";
@@ -341,8 +325,7 @@ void SDLMediaManager::stopSpeaker() {
 
 // ---------- Renderer control (placeholder) ----------
 
-bool SDLMediaManager::initRenderer(
-    const std::shared_ptr<VideoStream> &video_stream) {
+bool SDLMediaManager::initRenderer(const std::shared_ptr<VideoStream>& video_stream) {
   if (!video_stream) {
     std::cerr << "[error] startRenderer: videoStream is null\n";
     return false;

@@ -17,23 +17,23 @@
 /// Pong participant: listens on the "ping" data track and publishes responses
 /// on the "pong" data track. Use a token whose identity is `pong`.
 
-#include "constants.h"
-#include "json_converters.h"
-#include "livekit/livekit.h"
-#include "messages.h"
-#include "utils.h"
-
 #include <atomic>
 #include <cassert>
 #include <csignal>
 #include <cstdint>
-#include <iostream>
 #include <exception>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "constants.h"
+#include "json_converters.h"
+#include "livekit/livekit.h"
+#include "messages.h"
+#include "utils.h"
 
 using namespace livekit;
 
@@ -45,7 +45,7 @@ void handleSignal(int) { g_running.store(false); }
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   std::string url = ping_pong::getenvOrEmpty("LIVEKIT_URL");
   std::string token = ping_pong::getenvOrEmpty("LIVEKIT_TOKEN");
 
@@ -77,18 +77,17 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  LocalParticipant *local_participant = room->localParticipant();
+  LocalParticipant* local_participant = room->localParticipant();
   assert(local_participant);
 
-  std::cout << "[info] pong connected as identity='" << local_participant->identity()
-            << "' room='" << room->room_info().name << "'\n";
+  std::cout << "[info] pong connected as identity='" << local_participant->identity() << "' room='"
+            << room->room_info().name << "'\n";
 
-  auto publish_result =
-      local_participant->publishDataTrack(ping_pong::kPongTrackName);
+  auto publish_result = local_participant->publishDataTrack(ping_pong::kPongTrackName);
   if (!publish_result) {
-    const auto &error = publish_result.error();
-    std::cerr << "[error] Failed to publish pong data track: code="
-              << static_cast<std::uint32_t>(error.code) << " message=" << error.message << "\n";
+    const auto& error = publish_result.error();
+    std::cerr << "[error] Failed to publish pong data track: code=" << static_cast<std::uint32_t>(error.code)
+              << " message=" << error.message << "\n";
     room->setDelegate(nullptr);
     room.reset();
     livekit::shutdown();
@@ -99,16 +98,14 @@ int main(int argc, char *argv[]) {
 
   const auto callback_id = room->addOnDataFrameCallback(
       ping_pong::kPingParticipantIdentity, ping_pong::kPingTrackName,
-      [pong_track](const std::vector<std::uint8_t> &payload,
-                   std::optional<std::uint64_t> /*user_timestamp*/) {
+      [pong_track](const std::vector<std::uint8_t>& payload, std::optional<std::uint64_t> /*user_timestamp*/) {
         try {
           if (payload.empty()) {
             std::cout << "[debug] Ignoring empty ping payload\n";
             return;
           }
 
-          const auto ping_message =
-              ping_pong::pingMessageFromJson(ping_pong::toString(payload));
+          const auto ping_message = ping_pong::pingMessageFromJson(ping_pong::toString(payload));
 
           ping_pong::PongMessage pong_message;
           pong_message.rec_id = ping_message.id;
@@ -117,24 +114,21 @@ int main(int argc, char *argv[]) {
           const std::string json = ping_pong::pongMessageToJson(pong_message);
           auto push_result = pong_track->tryPush(ping_pong::toPayload(json));
           if (!push_result) {
-            const auto &error = push_result.error();
-            std::cerr << "[warn] Failed to push pong data frame: code="
-                      << static_cast<std::uint32_t>(error.code) << " message=" << error.message
-                      << "\n";
+            const auto& error = push_result.error();
+            std::cerr << "[warn] Failed to push pong data frame: code=" << static_cast<std::uint32_t>(error.code)
+                      << " message=" << error.message << "\n";
             return;
           }
 
           std::cout << "[info] received ping id=" << ping_message.id << " ts_ns=" << ping_message.ts_ns
-                    << " and sent pong rec_id=" << pong_message.rec_id << " ts_ns=" << pong_message.ts_ns
-                    << "\n";
-        } catch (const std::exception &e) {
+                    << " and sent pong rec_id=" << pong_message.rec_id << " ts_ns=" << pong_message.ts_ns << "\n";
+        } catch (const std::exception& e) {
           std::cerr << "[warn] Failed to process ping payload: " << e.what() << "\n";
         }
       });
 
-  std::cout << "[info] published data track '" << ping_pong::kPongTrackName
-            << "' and listening for '" << ping_pong::kPingTrackName << "' from '"
-            << ping_pong::kPingParticipantIdentity << "'\n";
+  std::cout << "[info] published data track '" << ping_pong::kPongTrackName << "' and listening for '"
+            << ping_pong::kPingTrackName << "' from '" << ping_pong::kPingParticipantIdentity << "'\n";
 
   while (g_running.load()) {
     std::this_thread::sleep_for(ping_pong::kPollPeriod);

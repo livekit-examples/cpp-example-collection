@@ -24,8 +24,6 @@
 /// Or via environment variables:
 ///   LIVEKIT_URL, LIVEKIT_RECEIVER_TOKEN, LIVEKIT_SENDER_IDENTITY
 
-#include "livekit/livekit.h"
-
 #include <atomic>
 #include <cassert>
 #include <chrono>
@@ -34,21 +32,23 @@
 #include <iostream>
 #include <thread>
 
+#include "livekit/livekit.h"
+
 using namespace livekit;
 
-constexpr const char *kDataTrackName = "app-data";
-constexpr const char *kVideoTrackName = "camera0";
+constexpr const char* kDataTrackName = "app-data";
+constexpr const char* kVideoTrackName = "camera0";
 
 std::atomic<bool> g_running{true};
 
 void handleSignal(int) { g_running.store(false); }
 
-std::string getenvOrEmpty(const char *name) {
-  const char *v = std::getenv(name);
+std::string getenvOrEmpty(const char* name) {
+  const char* v = std::getenv(name);
   return v ? std::string(v) : std::string{};
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   std::string url = getenvOrEmpty("LIVEKIT_URL");
   std::string receiver_token = getenvOrEmpty("LIVEKIT_RECEIVER_TOKEN");
   std::string sender_identity = getenvOrEmpty("LIVEKIT_SENDER_IDENTITY");
@@ -60,7 +60,8 @@ int main(int argc, char *argv[]) {
   }
 
   if (url.empty() || receiver_token.empty() || sender_identity.empty()) {
-    std::cerr << "[error] Usage: HelloLivekitReceiver <ws-url> <receiver-token> <sender-identity>\n  or set LIVEKIT_URL, LIVEKIT_RECEIVER_TOKEN, LIVEKIT_SENDER_IDENTITY\n";
+    std::cerr << "[error] Usage: HelloLivekitReceiver <ws-url> <receiver-token> <sender-identity>\n  or set "
+                 "LIVEKIT_URL, LIVEKIT_RECEIVER_TOKEN, LIVEKIT_SENDER_IDENTITY\n";
     return 1;
   }
 
@@ -82,35 +83,35 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  LocalParticipant *lp = room->localParticipant();
+  LocalParticipant* lp = room->localParticipant();
   assert(lp);
 
-  std::cout << "[info] [receiver] Connected as identity='" << lp->identity() << "' room='" << room->room_info().name << "'; subscribing to sender identity='" << sender_identity << "'\n";
+  std::cout << "[info] [receiver] Connected as identity='" << lp->identity() << "' room='" << room->room_info().name
+            << "'; subscribing to sender identity='" << sender_identity << "'\n";
 
   int video_frame_count = 0;
-  room->setOnVideoFrameCallback(
-      sender_identity, kVideoTrackName,
-      [&video_frame_count](const VideoFrame &frame, std::int64_t timestamp_us) {
-        const auto ts_ms =
-            std::chrono::duration<double, std::milli>(timestamp_us).count();
-        const int n = video_frame_count++;
-        if (n % 10 == 0) {
-          std::cout << "[info] [receiver] Video frame #" << n << " " << frame.width() << "x" << frame.height() << " ts_ms=" << ts_ms << "\n";
-        }
-      });
+  room->setOnVideoFrameCallback(sender_identity, kVideoTrackName,
+                                [&video_frame_count](const VideoFrame& frame, std::int64_t timestamp_us) {
+                                  const auto ts_ms = std::chrono::duration<double, std::milli>(timestamp_us).count();
+                                  const int n = video_frame_count++;
+                                  if (n % 10 == 0) {
+                                    std::cout << "[info] [receiver] Video frame #" << n << " " << frame.width() << "x"
+                                              << frame.height() << " ts_ms=" << ts_ms << "\n";
+                                  }
+                                });
 
   int data_frame_count = 0;
   room->addOnDataFrameCallback(
       sender_identity, kDataTrackName,
-      [&data_frame_count](const std::vector<std::uint8_t> &payload,
-                          std::optional<std::uint64_t> user_ts) {
+      [&data_frame_count](const std::vector<std::uint8_t>& payload, std::optional<std::uint64_t> user_ts) {
         const int n = data_frame_count++;
         if (n % 10 == 0) {
           std::cout << "[info] [receiver] Data frame #" << n << "\n";
         }
       });
 
-  std::cout << "[info] [receiver] Listening for video track '" << kVideoTrackName << "' + data track '" << kDataTrackName << "'; Ctrl-C to exit\n";
+  std::cout << "[info] [receiver] Listening for video track '" << kVideoTrackName << "' + data track '"
+            << kDataTrackName << "'; Ctrl-C to exit\n";
 
   while (g_running.load()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));

@@ -17,11 +17,12 @@
 
 #pragma once
 
-#include "livekit/livekit.h"
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
+
+#include "livekit/livekit.h"
 
 // Simple WAV container for 16-bit PCM files
 struct WavData {
@@ -31,18 +32,17 @@ struct WavData {
 };
 
 // Helper that loads 16-bit PCM WAV (16-bit, PCM only)
-WavData loadWav16(const std::string &path);
+WavData loadWav16(const std::string& path);
 
 using namespace livekit;
 
 class WavAudioSource {
 public:
   // loop_enabled: whether to loop when reaching the end
-  WavAudioSource(const std::string &path, int expected_sample_rate,
-                 int expected_channels, bool loop_enabled = true);
+  WavAudioSource(const std::string& path, int expected_sample_rate, int expected_channels, bool loop_enabled = true);
 
   // Fill a frame with the next chunk of audio.
-  void fillFrame(AudioFrame &frame);
+  void fillFrame(AudioFrame& frame);
 
 private:
   void initLoopDelayCounter();

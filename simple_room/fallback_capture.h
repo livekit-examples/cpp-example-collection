@@ -27,9 +27,6 @@ class AudioSource;
 class VideoSource;
 } // namespace livekit
 
-void runNoiseCaptureLoop(const std::shared_ptr<livekit::AudioSource> &source,
-                         std::atomic<bool> &running_flag);
+void runNoiseCaptureLoop(const std::shared_ptr<livekit::AudioSource>& source, std::atomic<bool>& running_flag);
 
-void runFakeVideoCaptureLoop(
-    const std::shared_ptr<livekit::VideoSource> &source,
-    std::atomic<bool> &running_flag);
+void runFakeVideoCaptureLoop(const std::shared_ptr<livekit::VideoSource>& source, std::atomic<bool>& running_flag);

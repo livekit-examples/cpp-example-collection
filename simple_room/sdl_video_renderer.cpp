@@ -16,9 +16,10 @@
 
 #include "sdl_video_renderer.h"
 
-#include "livekit/livekit.h"
-#include <iostream>
 #include <cstring>
+#include <iostream>
+
+#include "livekit/livekit.h"
 
 using namespace livekit;
 
@@ -28,7 +29,7 @@ SDLVideoRenderer::SDLVideoRenderer() = default;
 
 SDLVideoRenderer::~SDLVideoRenderer() { shutdown(); }
 
-bool SDLVideoRenderer::init(const char *title, int width, int height) {
+bool SDLVideoRenderer::init(const char* title, int width, int height) {
   width_ = width;
   height_ = height;
 
@@ -47,8 +48,7 @@ bool SDLVideoRenderer::init(const char *title, int width, int height) {
 
   // Note, web will send out BGRA as default, and we can't use ARGB since ffi
   // does not support converting from BGRA to ARGB.
-  texture_ = SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_RGBA8888,
-                               SDL_TEXTUREACCESS_STREAMING, width_, height_);
+  texture_ = SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, width_, height_);
   if (!texture_) {
     std::cerr << "[error] SDL_CreateTexture failed: " << SDL_GetError() << "\n";
     return false;
@@ -74,9 +74,7 @@ void SDLVideoRenderer::shutdown() {
   stream_.reset();
 }
 
-void SDLVideoRenderer::setStream(std::shared_ptr<livekit::VideoStream> stream) {
-  stream_ = std::move(stream);
-}
+void SDLVideoRenderer::setStream(std::shared_ptr<livekit::VideoStream> stream) { stream_ = std::move(stream); }
 
 void SDLVideoRenderer::render() {
   // 0) Basic sanity
@@ -115,14 +113,14 @@ void SDLVideoRenderer::render() {
     return;
   }
 
-  livekit::VideoFrame &frame = vfe.frame;
+  livekit::VideoFrame& frame = vfe.frame;
 
   // 4) Ensure the frame is RGBA.
   //    Ideally you requested RGBA from VideoStream::Options so this is a no-op.
   if (frame.type() != livekit::VideoBufferType::RGBA) {
     try {
       frame = frame.convert(livekit::VideoBufferType::RGBA, false);
-    } catch (const std::exception &ex) {
+    } catch (const std::exception& ex) {
       std::cerr << "[error] SDLVideoRenderer: convert to RGBA failed: " << ex.what() << "\n";
       return;
     }
@@ -137,11 +135,10 @@ void SDLVideoRenderer::render() {
       SDL_DestroyTexture(texture_);
       texture_ = nullptr;
     }
-    texture_ = SDL_CreateTexture(
-        renderer_,
-        SDL_PIXELFORMAT_RGBA32, // Note, SDL_PIXELFORMAT_RGBA8888 is not
-                                // compatible with Livekit RGBA format.
-        SDL_TEXTUREACCESS_STREAMING, width_, height_);
+    texture_ = SDL_CreateTexture(renderer_,
+                                 SDL_PIXELFORMAT_RGBA32, // Note, SDL_PIXELFORMAT_RGBA8888 is not
+                                                         // compatible with Livekit RGBA format.
+                                 SDL_TEXTUREACCESS_STREAMING, width_, height_);
     if (!texture_) {
       std::cerr << "[error] SDLVideoRenderer: SDL_CreateTexture failed: " << SDL_GetError() << "\n";
       return;
@@ -149,19 +146,18 @@ void SDLVideoRenderer::render() {
   }
 
   // 6) Upload RGBA data to SDL texture
-  void *pixels = nullptr;
+  void* pixels = nullptr;
   int pitch = 0;
   if (!SDL_LockTexture(texture_, nullptr, &pixels, &pitch)) {
     std::cerr << "[error] SDLVideoRenderer: SDL_LockTexture failed: " << SDL_GetError() << "\n";
     return;
   }
 
-  const std::uint8_t *src = frame.data();
+  const std::uint8_t* src = frame.data();
   const int srcPitch = frame.width() * 4; // RGBA: 4 bytes per pixel
 
   for (int y = 0; y < frame.height(); ++y) {
-    std::memcpy(static_cast<std::uint8_t *>(pixels) + y * pitch,
-                src + y * srcPitch, srcPitch);
+    std::memcpy(static_cast<std::uint8_t*>(pixels) + y * pitch, src + y * srcPitch, srcPitch);
   }
 
   SDL_UnlockTexture(texture_);
