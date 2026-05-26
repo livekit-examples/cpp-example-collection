@@ -136,7 +136,7 @@ WavAudioSource::WavAudioSource(const std::string& path, int expected_sample_rate
 
 void WavAudioSource::fillFrame(AudioFrame& frame) {
   const std::size_t frame_samples =
-      static_cast<std::size_t>(frame.num_channels()) * static_cast<std::size_t>(frame.samples_per_channel());
+      static_cast<std::size_t>(frame.numChannels()) * static_cast<std::size_t>(frame.samplesPerChannel());
 
   int16_t* dst = frame.data().data();
   const std::size_t total_wav_samples = wav_.samples.size();

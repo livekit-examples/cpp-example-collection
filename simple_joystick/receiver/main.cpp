@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
   options.auto_subscribe = true;
   options.dynacast = false;
 
-  bool res = room->Connect(url, token, options);
+  bool res = room->connect(url, token, options);
   std::cout << "[Receiver] Connect result: " << std::boolalpha << res << "\n";
   if (!res) {
     std::cerr << "[Receiver] Failed to connect to room\n";
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  auto info = room->room_info();
+  auto info = room->roomInfo();
   std::cout << "[Receiver] Connected to room: " << info.name << "\n";
   std::cout << "[Receiver] Waiting for sender peer (up to 2 minutes)...\n";
 

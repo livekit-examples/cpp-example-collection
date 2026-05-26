@@ -21,7 +21,13 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Make "include(LiveKitSDK)" search in ./cmake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(LIVEKIT_SDK_VERSION "latest" CACHE STRING "LiveKit C++ SDK version (e.g. 0.2.0 or latest)")
+set(LIVEKIT_SDK_VERSION "" CACHE STRING
+    "LiveKit C++ SDK release version (e.g. 0.3.4 or latest). Empty when LIVEKIT_SDK_COMMIT is used.")
+# Temporary pin: tracks an unreleased commit on `livekit/client-sdk-cpp@main`
+# that contains the unified-method-style guide changes (PR #127). Switch back
+# to LIVEKIT_SDK_VERSION once a tagged release ships those changes.
+set(LIVEKIT_SDK_COMMIT "f7a8df1b72207d0a81390e64e73f4eb5a4811c56" CACHE STRING
+    "LiveKit C++ SDK commit hash on main (uses Builds workflow artifacts; ~7d retention).")
 set(LIVEKIT_LOCAL_SDK_DIR "" CACHE PATH "Path to a local LiveKit SDK install prefix (skips download)")
 
 if(LIVEKIT_LOCAL_SDK_DIR)
@@ -29,11 +35,27 @@ if(LIVEKIT_LOCAL_SDK_DIR)
   list(PREPEND CMAKE_PREFIX_PATH "${LIVEKIT_LOCAL_SDK_DIR}")
 else()
   include(LiveKitSDK)
-  livekit_sdk_setup(
-    VERSION "${LIVEKIT_SDK_VERSION}"
-    SDK_DIR "${CMAKE_BINARY_DIR}/_deps/livekit-sdk"
-    GITHUB_TOKEN "$ENV{GITHUB_TOKEN}"
-  )
+  if(LIVEKIT_SDK_COMMIT AND LIVEKIT_SDK_VERSION)
+    message(FATAL_ERROR
+      "Set either LIVEKIT_SDK_COMMIT or LIVEKIT_SDK_VERSION, not both.\n"
+      "Got LIVEKIT_SDK_COMMIT='${LIVEKIT_SDK_COMMIT}' and LIVEKIT_SDK_VERSION='${LIVEKIT_SDK_VERSION}'.")
+  endif()
+  if(LIVEKIT_SDK_COMMIT)
+    livekit_sdk_setup(
+      COMMIT "${LIVEKIT_SDK_COMMIT}"
+      SDK_DIR "${CMAKE_BINARY_DIR}/_deps/livekit-sdk"
+      GITHUB_TOKEN "$ENV{GITHUB_TOKEN}"
+    )
+  else()
+    if(NOT LIVEKIT_SDK_VERSION)
+      set(LIVEKIT_SDK_VERSION "latest")
+    endif()
+    livekit_sdk_setup(
+      VERSION "${LIVEKIT_SDK_VERSION}"
+      SDK_DIR "${CMAKE_BINARY_DIR}/_deps/livekit-sdk"
+      GITHUB_TOKEN "$ENV{GITHUB_TOKEN}"
+    )
+  endif()
 endif()
 find_package(LiveKit CONFIG REQUIRED)
 

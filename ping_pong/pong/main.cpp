@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
   options.auto_subscribe = true;
   options.dynacast = false;
 
-  if (!room->Connect(url, token, options)) {
+  if (!room->connect(url, token, options)) {
     std::cerr << "[error] Failed to connect to room\n";
     livekit::shutdown();
     return 1;
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
   assert(local_participant);
 
   std::cout << "[info] pong connected as identity='" << local_participant->identity() << "' room='"
-            << room->room_info().name << "'\n";
+            << room->roomInfo().name << "'\n";
 
   auto publish_result = local_participant->publishDataTrack(ping_pong::kPongTrackName);
   if (!publish_result) {

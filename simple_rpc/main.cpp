@@ -86,7 +86,7 @@ bool ensurePeerPresent(Room* room, const std::string& identity, const std::strin
     return true;
   }
   // Timed out
-  auto info = room->room_info();
+  auto info = room->roomInfo();
   const std::string room_name = info.name;
   std::cout << "[Caller] Timed out after " << timeout.count() << "s waiting for " << friendly_role << " (identity=\""
             << identity << "\").\n";
@@ -408,7 +408,7 @@ int main(int argc, char* argv[]) {
   options.auto_subscribe = true;
   options.dynacast = false;
 
-  bool res = room->Connect(url, token, options);
+  bool res = room->connect(url, token, options);
   std::cout << "Connect result is " << std::boolalpha << res << "\n";
   if (!res) {
     std::cerr << "Failed to connect to room\n";
@@ -416,7 +416,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  auto info = room->room_info();
+  auto info = room->roomInfo();
   std::cout << "Connected to room:\n"
             << "  Name: " << info.name << "\n"
             << "  Metadata: " << info.metadata << "\n"

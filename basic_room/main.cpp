@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
   options.dynacast = false;
 
   std::cout << "Connecting to: " << url << "\n";
-  if (!room->Connect(url, token, options)) {
+  if (!room->connect(url, token, options)) {
     std::cerr << "Failed to connect\n";
     livekit::shutdown();
     return 1;

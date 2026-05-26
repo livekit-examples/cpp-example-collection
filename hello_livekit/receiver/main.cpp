@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
   options.auto_subscribe = true;
   options.dynacast = false;
 
-  if (!room->Connect(url, receiver_token, options)) {
+  if (!room->connect(url, receiver_token, options)) {
     std::cerr << "[error] [receiver] Failed to connect\n";
     livekit::shutdown();
     return 1;
@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
   LocalParticipant* lp = room->localParticipant();
   assert(lp);
 
-  std::cout << "[info] [receiver] Connected as identity='" << lp->identity() << "' room='" << room->room_info().name
+  std::cout << "[info] [receiver] Connected as identity='" << lp->identity() << "' room='" << room->roomInfo().name
             << "'; subscribing to sender identity='" << sender_identity << "'\n";
 
   int video_frame_count = 0;
