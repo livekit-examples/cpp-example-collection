@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
   options.auto_subscribe = true;
   options.dynacast = false;
 
-  bool res = room->Connect(url, token, options);
+  bool res = room->connect(url, token, options);
   std::cout << "[Sender] Connect result: " << std::boolalpha << res << "\n";
   if (!res) {
     std::cerr << "[Sender] Failed to connect to room\n";
@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  auto info = room->room_info();
+  auto info = room->roomInfo();
   std::cout << "[Sender] Connected to room: " << info.name << "\n";
 
   // Enable raw terminal mode for immediate keypress detection

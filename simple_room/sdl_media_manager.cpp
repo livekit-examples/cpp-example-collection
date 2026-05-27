@@ -82,8 +82,8 @@ bool SDLMediaManager::startMic(const std::shared_ptr<AudioSource>& audio_source)
   mic_using_sdl_ = true;
 
   mic_sdl_ = std::make_unique<SDLMicSource>(
-      mic_source_->sample_rate(), mic_source_->num_channels(),
-      mic_source_->sample_rate() / 100, // ~10ms
+      mic_source_->sampleRate(), mic_source_->numChannels(),
+      mic_source_->sampleRate() / 100, // ~10ms
       [src = mic_source_](const int16_t* samples, int num_samples_per_channel, int sample_rate, int num_channels) {
         AudioFrame frame = AudioFrame::create(sample_rate, num_channels, num_samples_per_channel);
         std::memcpy(frame.data().data(), samples, num_samples_per_channel * num_channels * sizeof(int16_t));
@@ -263,8 +263,8 @@ void SDLMediaManager::speakerLoopSDL() {
     if (!localStream) {
       SDL_AudioSpec want{};
       want.format = SDL_AUDIO_S16;
-      want.channels = static_cast<Uint8>(frame.num_channels());
-      want.freq = frame.sample_rate();
+      want.channels = static_cast<Uint8>(frame.numChannels());
+      want.freq = frame.sampleRate();
 
       localStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &want,
                                               /*callback=*/nullptr,

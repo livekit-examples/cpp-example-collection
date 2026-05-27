@@ -30,8 +30,8 @@ using namespace livekit;
 
 // Test utils to run a capture loop to publish noisy audio frames to the room
 void runNoiseCaptureLoop(const std::shared_ptr<AudioSource>& source, std::atomic<bool>& running_flag) {
-  const int sample_rate = source->sample_rate();
-  const int num_channels = source->num_channels();
+  const int sample_rate = source->sampleRate();
+  const int num_channels = source->numChannels();
   const int frame_ms = 10;
   const int samples_per_channel = sample_rate * frame_ms / 1000;
 

@@ -89,12 +89,12 @@ int main(int argc, char* argv[]) {
     options.dynacast = false;
 
     std::cout << "[producer] connecting to " << cli_options.url << "\n";
-    if (!room.Connect(cli_options.url, cli_options.token, options)) {
+    if (!room.connect(cli_options.url, cli_options.token, options)) {
       std::cerr << "[producer] failed to connect\n";
       exit_code = 1;
     } else {
       std::cout << "[producer] connected as " << room.localParticipant()->identity() << " to room '"
-                << room.room_info().name << "'\n";
+                << room.roomInfo().name << "'\n";
 
       auto source = std::make_shared<VideoSource>(kFrameWidth, kFrameHeight);
       auto track = LocalVideoTrack::createLocalVideoTrack("timestamped-camera", source);

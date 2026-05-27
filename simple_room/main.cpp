@@ -272,7 +272,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  bool res = room->Connect(url, token, options);
+  bool res = room->connect(url, token, options);
   std::cout << "Connect result is " << std::boolalpha << res << std::endl;
   if (!res) {
     std::cerr << "[error] Failed to connect to room\n";
@@ -280,7 +280,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  auto info = room->room_info();
+  auto info = room->roomInfo();
   std::cout << "Connected to room:\n"
             << "  SID: " << (info.sid ? *info.sid : "(none)") << "\n"
             << "  Name: " << info.name << "\n"

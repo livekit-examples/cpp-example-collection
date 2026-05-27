@@ -213,7 +213,7 @@ int main(int argc, char* argv[]) {
   options.auto_subscribe = true;
   options.dynacast = false;
 
-  bool ok = room->Connect(url, token, options);
+  bool ok = room->connect(url, token, options);
   std::cout << "[DataStream] Connect result: " << std::boolalpha << ok << "\n";
   if (!ok) {
     std::cerr << "[DataStream] Failed to connect to room\n";
@@ -221,7 +221,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  auto info = room->room_info();
+  auto info = room->roomInfo();
   std::cout << "[DataStream] Connected to room '" << info.name << "', participants: " << info.num_participants << "\n";
 
   // Register stream handlers

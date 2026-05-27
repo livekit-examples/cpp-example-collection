@@ -159,12 +159,12 @@ int main(int argc, char* argv[]) {
     room.setDelegate(&delegate);
 
     std::cout << "[consumer] connecting to " << cli_options.url << "\n";
-    if (!room.Connect(cli_options.url, cli_options.token, options)) {
+    if (!room.connect(cli_options.url, cli_options.token, options)) {
       std::cerr << "[consumer] failed to connect\n";
       exit_code = 1;
     } else {
       std::cout << "[consumer] connected as " << room.localParticipant()->identity() << " to room '"
-                << room.room_info().name << "' with user timestamp "
+                << room.roomInfo().name << "' with user timestamp "
                 << (cli_options.use_user_timestamp ? "enabled" : "ignored") << "\n";
 
       delegate.registerExistingParticipants();
