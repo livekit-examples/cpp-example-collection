@@ -80,7 +80,6 @@ int main(int argc, char* argv[]) {
 
   if (!room->connect(url, sender_token, options)) {
     std::cerr << "[error] [sender] Failed to connect\n";
-    livekit::shutdown();
     return 1;
   }
 
@@ -100,8 +99,6 @@ int main(int argc, char* argv[]) {
     const auto& error = publish_result.error();
     std::cerr << "[error] Failed to publish data track: code=" << static_cast<std::uint32_t>(error.code)
               << " message=" << error.message << "\n";
-    room.reset();
-    livekit::shutdown();
     return 1;
   }
   std::shared_ptr<LocalDataTrack> data_track = publish_result.value();

@@ -20,3 +20,12 @@ target_include_directories(HelloLivekitReceiver PRIVATE ${CMAKE_CURRENT_SOURCE_D
 target_link_libraries(HelloLivekitReceiver PRIVATE ${LIVEKIT_CORE_TARGET})
 
 livekit_copy_windows_runtime_dlls(HelloLivekitReceiver)
+
+add_executable(HelloLivekitReceiverSimple
+  main_simple.cpp
+)
+
+target_include_directories(HelloLivekitReceiverSimple PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(HelloLivekitReceiverSimple PRIVATE ${LIVEKIT_CORE_TARGET})
+
+livekit_copy_windows_runtime_dlls(HelloLivekitReceiverSimple)
