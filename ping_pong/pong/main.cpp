@@ -18,13 +18,13 @@
 /// on the "pong" data track. Use a token whose identity is `pong`.
 
 #include <atomic>
-#include <cassert>
 #include <csignal>
 #include <cstdint>
 #include <exception>
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -77,24 +77,29 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  LocalParticipant* local_participant = room->localParticipant();
-  assert(local_participant);
+  std::shared_ptr<LocalDataTrack> pong_track;
+  {
+    // limit the scope of the local participant
+    auto local_participant = room->localParticipant().lock();
+    if (!local_participant) {
+      throw std::runtime_error("[pong] local participant is null");
+    }
 
-  std::cout << "[info] pong connected as identity='" << local_participant->identity() << "' room='"
-            << room->roomInfo().name << "'\n";
+    std::cout << "[info] pong connected as identity='" << local_participant->identity() << "' room='"
+              << room->roomInfo().name << "'\n";
 
-  auto publish_result = local_participant->publishDataTrack(ping_pong::kPongTrackName);
-  if (!publish_result) {
-    const auto& error = publish_result.error();
-    std::cerr << "[error] Failed to publish pong data track: code=" << static_cast<std::uint32_t>(error.code)
-              << " message=" << error.message << "\n";
-    room->setDelegate(nullptr);
-    room.reset();
-    livekit::shutdown();
-    return 1;
+    auto publish_result = local_participant->publishDataTrack(ping_pong::kPongTrackName);
+    if (!publish_result) {
+      const auto& error = publish_result.error();
+      std::cerr << "[error] Failed to publish pong data track: code=" << static_cast<std::uint32_t>(error.code)
+                << " message=" << error.message << "\n";
+      room->setDelegate(nullptr);
+      room.reset();
+      livekit::shutdown();
+      return 1;
+    }
+    pong_track = publish_result.value();
   }
-
-  std::shared_ptr<LocalDataTrack> pong_track = publish_result.value();
 
   const auto callback_id = room->addOnDataFrameCallback(
       ping_pong::kPingParticipantIdentity, ping_pong::kPingTrackName,

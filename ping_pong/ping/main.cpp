@@ -19,7 +19,6 @@
 /// identity is `ping`.
 
 #include <atomic>
-#include <cassert>
 #include <csignal>
 #include <cstdint>
 #include <exception>
@@ -27,6 +26,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -98,24 +98,29 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  LocalParticipant* local_participant = room->localParticipant();
-  assert(local_participant);
+  std::shared_ptr<LocalDataTrack> ping_track;
+  {
+    auto local_participant = room->localParticipant().lock();
+    if (!local_participant) {
+      throw std::runtime_error("[ping] local participant is null");
+    }
 
-  std::cout << "[info] ping connected as identity='" << local_participant->identity() << "' room='"
-            << room->roomInfo().name << "'\n";
+    std::cout << "[info] ping connected as identity='" << local_participant->identity() << "' room='"
+              << room->roomInfo().name << "'\n";
 
-  auto publish_result = local_participant->publishDataTrack(ping_pong::kPingTrackName);
-  if (!publish_result) {
-    const auto& error = publish_result.error();
-    std::cerr << "[error] Failed to publish ping data track: code=" << static_cast<std::uint32_t>(error.code)
-              << " message=" << error.message << "\n";
-    room->setDelegate(nullptr);
-    room.reset();
-    livekit::shutdown();
-    return 1;
+    auto publish_result = local_participant->publishDataTrack(ping_pong::kPingTrackName);
+    if (!publish_result) {
+      const auto& error = publish_result.error();
+      std::cerr << "[error] Failed to publish ping data track: code=" << static_cast<std::uint32_t>(error.code)
+                << " message=" << error.message << "\n";
+      room->setDelegate(nullptr);
+      room.reset();
+      livekit::shutdown();
+      return 1;
+    }
+    ping_track = publish_result.value();
   }
 
-  std::shared_ptr<LocalDataTrack> ping_track = publish_result.value();
   std::unordered_map<std::uint64_t, ping_pong::PingMessage> sent_messages;
   std::mutex sent_messages_mutex;
 
