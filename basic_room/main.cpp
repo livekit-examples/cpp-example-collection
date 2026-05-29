@@ -94,7 +94,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   if (self_test) {
-    livekit::initialize(livekit::LogLevel::Info, livekit::LogSink::kConsole);
+    livekit::initialize(livekit::LogLevel::Info);
     livekit::shutdown();
     std::cout << "self-test ok" << std::endl;
     return 0;
@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
   std::signal(SIGINT, handleSignal);
 
   // Init LiveKit
-  livekit::initialize(livekit::LogLevel::Info, livekit::LogSink::kConsole);
+  livekit::initialize(livekit::LogLevel::Info);
 
   auto room = std::make_unique<Room>();
 

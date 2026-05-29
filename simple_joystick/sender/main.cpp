@@ -127,7 +127,7 @@ int main(int argc, char* argv[]) {
   std::cout << "[Sender] Connecting to: " << url << "\n";
   std::signal(SIGINT, handleSignal);
 
-  livekit::initialize(livekit::LogLevel::Info, livekit::LogSink::kConsole);
+  livekit::initialize(livekit::LogLevel::Info);
   auto room = std::make_unique<Room>();
   RoomOptions options;
   options.auto_subscribe = true;
