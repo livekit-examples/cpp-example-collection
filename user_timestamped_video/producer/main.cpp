@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
 
   user_timestamped_video::installSignalHandlers();
 
-  livekit::initialize(livekit::LogLevel::Info, livekit::LogSink::kConsole);
+  livekit::initialize(livekit::LogLevel::Info);
   int exit_code = 0;
 
   {

@@ -402,7 +402,7 @@ int main(int argc, char* argv[]) {
   std::signal(SIGINT, handleSignal);
 
   // Initialize the livekit with logging to console.
-  livekit::initialize(livekit::LogLevel::Info, livekit::LogSink::kConsole);
+  livekit::initialize(livekit::LogLevel::Info);
   auto room = std::make_unique<Room>();
   RoomOptions options;
   options.auto_subscribe = true;
