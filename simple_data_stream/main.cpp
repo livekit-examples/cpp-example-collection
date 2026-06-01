@@ -64,7 +64,7 @@ std::string randomHexId(std::size_t nbytes = 16) {
 void greetParticipant(Room* room, const std::string& identity) {
   std::cout << "[DataStream] Greeting participant: " << identity << "\n";
 
-  LocalParticipant* lp = room->localParticipant();
+  auto lp = room->localParticipant().lock();
   if (!lp) {
     std::cerr << "[DataStream] No local participant, cannot greet.\n";
     return;
@@ -240,7 +240,8 @@ int main(int argc, char* argv[]) {
   // Greet existing participants
   {
     auto remotes = room->remoteParticipants();
-    for (const auto& rp : remotes) {
+    for (const auto& weak_rp : remotes) {
+      auto rp = weak_rp.lock();
       if (!rp) continue;
       std::cout << "Remote: " << rp->identity() << "\n";
       greetParticipant(room.get(), rp->identity());

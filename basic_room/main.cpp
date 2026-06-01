@@ -132,7 +132,9 @@ int main(int argc, char* argv[]) {
 
   std::shared_ptr<LocalTrackPublication> audioPub;
   try {
-    room->localParticipant()->publishTrack(audioTrack, audioOpts);
+    auto lp = room->localParticipant().lock();
+    if (!lp) throw std::runtime_error("local participant unavailable");
+    lp->publishTrack(audioTrack, audioOpts);
     audioPub = audioTrack->publication();
     std::cout << "Published audio: sid=" << audioPub->sid() << "\n";
   } catch (const std::exception& e) {
@@ -151,7 +153,9 @@ int main(int argc, char* argv[]) {
 
   std::shared_ptr<LocalTrackPublication> videoPub;
   try {
-    room->localParticipant()->publishTrack(videoTrack, videoOpts);
+    auto lp = room->localParticipant().lock();
+    if (!lp) throw std::runtime_error("local participant unavailable");
+    lp->publishTrack(videoTrack, videoOpts);
     videoPub = videoTrack->publication();
     std::cout << "Published video: sid=" << videoPub->sid() << "\n";
   } catch (const std::exception& e) {
@@ -179,8 +183,10 @@ int main(int argc, char* argv[]) {
 
   // Best-effort unpublish
   try {
-    if (audioPub) room->localParticipant()->unpublishTrack(audioPub->sid());
-    if (videoPub) room->localParticipant()->unpublishTrack(videoPub->sid());
+    if (auto lp = room->localParticipant().lock()) {
+      if (audioPub) lp->unpublishTrack(audioPub->sid());
+      if (videoPub) lp->unpublishTrack(videoPub->sid());
+    }
   } catch (...) {
   }
 
