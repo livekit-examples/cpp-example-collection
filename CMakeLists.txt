@@ -82,6 +82,7 @@ endfunction()
 include(ExampleDeps)
 
 add_subdirectory(basic_room)
+add_subdirectory(token_source)
 add_subdirectory(simple_room)
 add_subdirectory(simple_rpc)
 add_subdirectory(simple_data_stream)
