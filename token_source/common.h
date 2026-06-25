@@ -20,9 +20,6 @@
 // logging delegate, the "connect then observe" session loop, and the small
 // environment-variable helpers are factored out here so the per-type files stay
 // short and highlight only the token-source-specific code.
-//
-// This mirrors the SDK's own token_source_tester
-// (client-sdk-cpp/src/tests/token_source_tester.cpp).
 
 #pragma once
 
