@@ -73,6 +73,16 @@ For example:
 ./build/basic_room/basic_room --url <ws-url> --token <token>
 ```
 
+### PlatformAudio
+
+The `platform_audio` examples show microphone capture and speaker playout using
+WebRTC's platform Audio Device Module:
+
+```bash
+./build/platform_audio/player/PlatformAudioPlayer <ws-url> <player-token>
+./build/platform_audio/sender/PlatformAudioSender <ws-url> <sender-token>
+```
+
 ### Supported platforms
 
 Prebuilt SDKs are downloaded automatically for:
