@@ -16,11 +16,11 @@ disconnects.
 
 | Example | Type | When to use |
 |---|---|---|
-| `literal.cpp` | `LiteralTokenSource` | You already have a URL + JWT (minted out of band, e.g. `lk token create`). The SDK consumes them as-is. |
-| `endpoint.cpp` | `EndpointTokenSource` | Recommended for production. The SDK POSTs request options to your backend token endpoint, which returns the URL + a fresh JWT. API keys stay server-side. |
-| `sandbox.cpp` | `SandboxTokenSource` | Local development only. Uses LiveKit Cloud's sandbox token server. Not for production. |
-| `custom.cpp` | `CustomTokenSource` | You have an internal auth/token system. Plug in your own async callback that returns credentials. |
-| `caching.cpp` | `CachingTokenSource` | A decorator that adds JWT-aware caching around any configurable source (endpoint/sandbox/custom) to cut down on fetch calls. |
+| `token_source_literal.cpp` | `LiteralTokenSource` | You already have a URL + JWT (minted out of band, e.g. `lk token create`). The SDK consumes them as-is. |
+| `token_source_endpoint.cpp` | `EndpointTokenSource` | Recommended for production. The SDK POSTs request options to your backend token endpoint, which returns the URL + a fresh JWT. API keys stay server-side. |
+| `token_source_sandbox.cpp` | `SandboxTokenSource` | Local development only. Uses LiveKit Cloud's sandbox token server. Not for production. |
+| `token_source_custom.cpp` | `CustomTokenSource` | You have an internal auth/token system. Plug in your own async callback that returns credentials. |
+| `token_source_caching.cpp` | `CachingTokenSource` | A decorator that adds JWT-aware caching around any configurable source (endpoint/sandbox/custom) to cut down on fetch calls. |
 
 `LiteralTokenSource` is *fixed* (no per-call options); the others are
 *configurable* and accept
@@ -48,13 +48,16 @@ committed to source.
 The token source API is newer than the latest published SDK release, so build
 these examples against a **local SDK build** of the
 [`feature/token_source_api`](https://github.com/livekit/client-sdk-cpp/tree/feature/token_source_api)
-branch rather than a downloaded release.
+branch rather than a downloaded release. The commands below pin the branch to
+commit [`bbf6a41`](https://github.com/livekit/client-sdk-cpp/commit/bbf6a41fae42607ee19ff44ccddac786767b34e3)
+so the examples build against a known-good API; drop the `git checkout` of the
+hash to track the branch tip instead.
 
 ```bash
 # 1. Build and install the SDK from the feature branch.
 git clone https://github.com/livekit/client-sdk-cpp.git
 cd client-sdk-cpp
-git checkout feature/token_source_api
+git checkout bbf6a41fae42607ee19ff44ccddac786767b34e3
 git submodule update --init --recursive
 ./build.sh release --bundle --prefix "$HOME/livekit-sdk-install"
 

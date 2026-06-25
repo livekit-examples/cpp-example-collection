@@ -18,8 +18,8 @@
 // configurable token source (endpoint, sandbox, or custom).
 //
 // Repeated fetches for the same request options reuse the cached token until it
-// nears expiry or a force-refresh is requested, cutting down calls to your
-// backend. This example wraps an EndpointTokenSource.
+// nears expiry or you call invalidate() to drop the cached credentials, cutting
+// down calls to your backend. This example wraps an EndpointTokenSource.
 //
 // Environment:
 //   LIVEKIT_TOKEN_ENDPOINT          Token endpoint URL
@@ -34,7 +34,7 @@
 #include <string>
 #include <utility>
 
-#include "common.h"
+#include "token_source_common.h"
 
 namespace {
 

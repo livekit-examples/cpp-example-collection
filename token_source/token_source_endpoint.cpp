@@ -34,7 +34,7 @@
 #include <string>
 #include <utility>
 
-#include "common.h"
+#include "token_source_common.h"
 
 namespace {
 

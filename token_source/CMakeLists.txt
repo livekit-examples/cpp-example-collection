@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# One executable per token source type. Each shares common.h for the logging
-# delegate and the connect/observe session loop.
+# One executable per token source type. Each shares token_source_common.h for
+# the logging delegate and the connect/observe session loop.
 
 # Resolve the SDK lib directory so -llivekit_ffi is found at link time.
 get_filename_component(_lk_cmake_dir "${LiveKit_DIR}" DIRECTORY)  # .../lib/cmake
 get_filename_component(_lk_lib_dir  "${_lk_cmake_dir}" DIRECTORY) # .../lib
 
 set(_token_source_examples
-  token_source_literal   literal.cpp
-  token_source_endpoint  endpoint.cpp
-  token_source_sandbox   sandbox.cpp
-  token_source_custom    custom.cpp
-  token_source_caching   caching.cpp
+  token_source_literal   token_source_literal.cpp
+  token_source_endpoint  token_source_endpoint.cpp
+  token_source_sandbox   token_source_sandbox.cpp
+  token_source_custom    token_source_custom.cpp
+  token_source_caching   token_source_caching.cpp
 )
 
 list(LENGTH _token_source_examples _count)
