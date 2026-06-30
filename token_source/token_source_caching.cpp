@@ -48,10 +48,10 @@ bool cachingTokenSourceConnect() {
 
   std::cout << "Caching token source wrapping endpoint: " << endpoint_url << "\n";
 
-  // Build the inner source, then wrap it. CachingTokenSource::wrap takes
+  // Build the inner source, then wrap it. CachingTokenSource::create takes
   // ownership of the inner source via unique_ptr.
-  auto inner = livekit::EndpointTokenSource::fromUrl(endpoint_url, endpointOptionsFromEnv());
-  auto token_source = livekit::CachingTokenSource::wrap(std::move(inner));
+  auto inner = livekit::EndpointTokenSource::create(endpoint_url, endpointOptionsFromEnv());
+  auto token_source = livekit::CachingTokenSource::create(std::move(inner));
 
   livekit::TokenRequestOptions request_options;
   request_options.participant_identity = "robot-a";

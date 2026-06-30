@@ -50,7 +50,7 @@ bool endpointTokenSourceConnect() {
   std::cout << "Endpoint token source: " << endpoint_options.method << " " << endpoint_url << " ("
             << endpoint_options.headers.size() << " custom header(s))\n";
 
-  auto token_source = livekit::EndpointTokenSource::fromUrl(endpoint_url, std::move(endpoint_options));
+  auto token_source = livekit::EndpointTokenSource::create(endpoint_url, std::move(endpoint_options));
 
   // These options are sent to your endpoint, which embeds them into the JWT.
   livekit::TokenRequestOptions request_options;

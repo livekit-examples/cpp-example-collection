@@ -45,7 +45,7 @@ bool sandboxTokenSourceConnect() {
 
   // POSTs to cloud-api.livekit.io/api/v2/sandbox/connection-details with
   // X-Sandbox-ID set from LIVEKIT_SANDBOX_ID.
-  auto token_source = livekit::SandboxTokenSource::fromSandboxId(sandbox_id);
+  auto token_source = livekit::SandboxTokenSource::create(sandbox_id);
 
   livekit::TokenRequestOptions request_options;
   request_options.participant_identity = "robot-a";

@@ -45,7 +45,7 @@ bool literalTokenSourceConnect() {
 
   // Each fetch() returns these exact credentials; nothing is requested over the
   // network. Room and participant identity are encoded in the token.
-  auto token_source = livekit::LiteralTokenSource::fromValue(url, token);
+  auto token_source = livekit::LiteralTokenSource::create(url, token);
 
   livekit::Room room;
   ParticipantLogDelegate delegate;

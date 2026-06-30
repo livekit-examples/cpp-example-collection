@@ -55,7 +55,7 @@ bool customTokenSourceConnect() {
   // The callback is invoked for each fetch with the request options. Here we
   // pretend to call an internal service; in a real app this is where you would
   // talk to your own auth backend.
-  auto token_source = livekit::CustomTokenSource::fromCallback(
+  auto token_source = livekit::CustomTokenSource::create(
       [](const livekit::TokenRequestOptions& options) -> std::future<TokenResult> {
         (void)options; // A real backend would honor these (room, identity, ...).
 
