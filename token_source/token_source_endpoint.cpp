@@ -55,11 +55,16 @@ bool endpointTokenSourceConnect() {
   // These options are sent to your endpoint, which embeds them into the JWT.
   livekit::TokenRequestOptions request_options;
   request_options.participant_identity = "robot-a";
+  const auto credentials = token_source->fetch(request_options).get();
+  if (!credentials) {
+    std::cerr << "Failed to fetch credentials: " << credentials.error().message << "\n";
+    return false;
+  }
 
   livekit::Room room;
   ParticipantLogDelegate delegate;
   room.setDelegate(&delegate);
-  if (!room.connect(*token_source, request_options, livekit::RoomOptions())) {
+  if (!room.connect(credentials.value().server_url, credentials.value().participant_token, livekit::RoomOptions())) {
     std::cerr << "Failed to connect to room\n";
     return false;
   }

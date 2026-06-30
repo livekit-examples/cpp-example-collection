@@ -71,11 +71,16 @@ bool customTokenSourceConnect() {
         response.participant_token = token;
         return makeReadyFuture(TokenResult::success(std::move(response)));
       });
+  const auto credentials = token_source->fetch(livekit::TokenRequestOptions()).get();
+  if (!credentials) {
+    std::cerr << "Failed to fetch credentials: " << credentials.error().message << "\n";
+    return false;
+  }
 
   livekit::Room room;
   ParticipantLogDelegate delegate;
   room.setDelegate(&delegate);
-  if (!room.connect(*token_source, livekit::TokenRequestOptions(), livekit::RoomOptions())) {
+  if (!room.connect(credentials.value().server_url, credentials.value().participant_token, livekit::RoomOptions())) {
     std::cerr << "Failed to connect to room\n";
     return false;
   }

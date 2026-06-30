@@ -46,11 +46,16 @@ bool literalTokenSourceConnect() {
   // Each fetch() returns these exact credentials; nothing is requested over the
   // network. Room and participant identity are encoded in the token.
   auto token_source = livekit::LiteralTokenSource::create(url, token);
+  const auto credentials = token_source->fetch().get();
+  if (!credentials) {
+    std::cerr << "Failed to fetch credentials: " << credentials.error().message << "\n";
+    return false;
+  }
 
   livekit::Room room;
   ParticipantLogDelegate delegate;
   room.setDelegate(&delegate);
-  if (!room.connect(*token_source, livekit::RoomOptions())) {
+  if (!room.connect(credentials.value().server_url, credentials.value().participant_token, livekit::RoomOptions())) {
     std::cerr << "Failed to connect to room\n";
     return false;
   }
