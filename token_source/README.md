@@ -86,8 +86,9 @@ for setup details. Do not use this in production.
 
 ```bash
 export LIVEKIT_SANDBOX_ID=token-server-xxxxxx
-# optional: dispatch a registered agent into the room
+# optional: dispatch a registered agent into the room with metadata
 # export LIVEKIT_AGENT_NAME=my-agent
+# export LIVEKIT_AGENT_METADATA='{"greeting": "hello from cpp"}'
 ```
 
 ### Executing
@@ -111,8 +112,12 @@ export LIVEKIT_TOKEN_ENDPOINT=http://127.0.0.1:3000/createToken
 ```bash
 # Sandbox: development-only, ID from the environment
 export LIVEKIT_SANDBOX_ID=<your-sandbox-id>
+export LIVEKIT_AGENT_NAME=<your-agent-name>         # optional
+export LIVEKIT_AGENT_METADATA=<your-agent-metadata> # optional
 ./build/token_source/token_source_sandbox
+```
 
+```bash
 # Custom: callback returns credentials (this example reads the env)
 export LIVEKIT_URL=ws://localhost:7880
 export LIVEKIT_TOKEN=<participant-jwt>
