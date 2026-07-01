@@ -23,7 +23,7 @@ Requirements:
   `VideoFrameMetadata` and `setOnVideoFrameEventCallback`, which are not
   available in older SDK releases.
 - To pin the SDK version when configuring the examples, pass
-  `-DLIVEKIT_SDK_VERSION=0.3.4` to CMake.
+  `-DLIVEKIT_SDK_VERSION=1.3.0` to CMake.
 
 Flags:
 
