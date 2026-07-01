@@ -45,32 +45,21 @@ All inputs come from environment variables, so no secrets or sandbox IDs are com
 These examples require LiveKit C++ SDK **v1.3.0** or newer. Build them with the
 rest of the repo — see the root [README](../README.md#building-the-examples).
 
-## Running
+## Running the Examples
 
-The built binaries live under `build/token_source/`:
+### Prerequisites
+
+#### LiveKit Server
+
+Start a development server via:
 
 ```bash
-# Literal: bring your own URL + token
-export LIVEKIT_URL=ws://localhost:7880
-export LIVEKIT_TOKEN=<participant-jwt>
-./build/token_source/token_source_literal
-
-# Endpoint / caching: point at your token endpoint
-export LIVEKIT_TOKEN_ENDPOINT=http://127.0.0.1:3000/createToken
-./build/token_source/token_source_endpoint
-./build/token_source/token_source_caching
-
-# Sandbox: development-only, ID from the environment
-export LIVEKIT_SANDBOX_ID=<your-sandbox-id>
-./build/token_source/token_source_sandbox
-
-# Custom: callback returns credentials (this example reads the env)
-export LIVEKIT_URL=ws://localhost:7880
-export LIVEKIT_TOKEN=<participant-jwt>
-./build/token_source/token_source_custom
+livekit-server --dev
 ```
 
-Generate a development token with the
+#### Token Sources
+
+For literal and custom, generate a development token with the
 [LiveKit CLI](https://docs.livekit.io/home/cli/cli-setup/) (a dev server started
 with `livekit-server --dev` uses `devkey` / `secret`):
 
@@ -79,4 +68,53 @@ export LIVEKIT_TOKEN=$(lk token create \
   --api-key devkey --api-secret secret \
   -i my-participant --join --room my-room \
   --valid-for 24h --token-only)
+```
+
+For the endpoint and caching examples, run a local token server such as
+[token-server-node](https://github.com/livekit-examples/token-server-node). This can be run via:
+
+```bash
+cd <path-to>/token-server-node
+LIVEKIT_URL=ws://localhost:7880 LIVEKIT_API_KEY=devkey LIVEKIT_API_SECRET=secret PORT=3000 pnpm start
+```
+
+For sandbox, create a **Token Server** sandbox in [LiveKit Cloud](https://cloud.livekit.io)
+(Sandbox → create from the token-server template), then copy the sandbox ID
+(`token-server-xxxxxx`). See the
+[sandbox token server docs](https://docs.livekit.io/frontends/build/authentication/sandbox-token-server/)
+for setup details. Do not use this in production.
+
+```bash
+export LIVEKIT_SANDBOX_ID=token-server-xxxxxx
+# optional: dispatch a registered agent into the room
+# export LIVEKIT_AGENT_NAME=my-agent
+```
+
+### Executing
+
+The built binaries live under `build/token_source/`:
+
+```bash
+# Literal: bring your own URL + token
+export LIVEKIT_URL=ws://localhost:7880
+export LIVEKIT_TOKEN=<participant-jwt>
+./build/token_source/token_source_literal
+```
+
+```bash
+# Endpoint / caching: point at your token endpoint
+export LIVEKIT_TOKEN_ENDPOINT=http://127.0.0.1:3000/createToken
+./build/token_source/token_source_endpoint
+./build/token_source/token_source_caching
+```
+
+```bash
+# Sandbox: development-only, ID from the environment
+export LIVEKIT_SANDBOX_ID=<your-sandbox-id>
+./build/token_source/token_source_sandbox
+
+# Custom: callback returns credentials (this example reads the env)
+export LIVEKIT_URL=ws://localhost:7880
+export LIVEKIT_TOKEN=<participant-jwt>
+./build/token_source/token_source_custom
 ```
