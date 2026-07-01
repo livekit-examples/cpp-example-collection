@@ -17,9 +17,9 @@
 /// UserTimestampedVideoProducer
 ///
 /// Publishes a synthetic camera track and stamps each frame with
-/// `VideoCaptureOptions::metadata.user_timestamp_us`. Pair with
+/// `VideoCaptureOptions::metadata.user_timestamp_us` and `frame_id`. Pair with
 /// `UserTimestampedVideoConsumer` in another process to observe the user
-/// timestamps flowing end to end.
+/// metadata flowing end to end.
 ///
 /// Usage:
 ///   UserTimestampedVideoProducer <ws-url> <token>
@@ -105,13 +105,15 @@ int main(int argc, char* argv[]) {
       try {
         TrackPublishOptions publish_options;
         publish_options.source = TrackSource::SOURCE_CAMERA;
-        publish_options.packet_trailer_features.user_timestamp = cli_options.use_user_timestamp;
+        publish_options.frame_metadata_features = FrameMetadataFeatures{};
+        publish_options.frame_metadata_features->user_timestamp = cli_options.use_user_timestamp;
+        publish_options.frame_metadata_features->frame_id = cli_options.use_user_timestamp;
 
         {
           auto lp = room.localParticipant().lock();
           if (!lp) throw std::runtime_error("local participant unavailable");
           lp->publishTrack(track, publish_options);
-          std::cout << "[producer] published camera track with user timestamp "
+          std::cout << "[producer] published camera track with frame metadata "
                     << (cli_options.use_user_timestamp ? "enabled" : "disabled") << "\n";
         }
 
@@ -133,12 +135,16 @@ int main(int argc, char* argv[]) {
           if (cli_options.use_user_timestamp) {
             capture_options.metadata = VideoFrameMetadata{};
             capture_options.metadata->user_timestamp_us = nowEpochUs();
+            capture_options.metadata->frame_id = frame_index;
           }
 
           source->captureFrame(frame, capture_options);
 
           if (frame_index % 5 == 0) {
             std::cout << "[producer] frame=" << frame_index << " capture_ts_us=" << capture_options.timestamp_us
+                      << " metadata_frame_id="
+                      << (cli_options.use_user_timestamp ? std::to_string(*capture_options.metadata->frame_id)
+                                                         : std::string("disabled"))
                       << " user_ts_us="
                       << (cli_options.use_user_timestamp ? std::to_string(*capture_options.metadata->user_timestamp_us)
                                                          : std::string("disabled"))

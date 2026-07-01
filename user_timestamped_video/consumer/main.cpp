@@ -17,8 +17,8 @@
 /// UserTimestampedVideoConsumer
 ///
 /// Receives remote video frames via `Room::setOnVideoFrameEventCallback()` and
-/// logs any `VideoFrameMetadata::user_timestamp_us` values that arrive. Pair
-/// with `UserTimestampedVideoProducer` running in another process.
+/// logs any `VideoFrameMetadata::user_timestamp_us` and `frame_id` values that
+/// arrive. Pair with `UserTimestampedVideoProducer` running in another process.
 ///
 /// Usage:
 ///   UserTimestampedVideoConsumer <ws-url> <token>
@@ -51,6 +51,14 @@ std::string formatUserTimestamp(const std::optional<VideoFrameMetadata>& metadat
   }
 
   return std::to_string(*metadata->user_timestamp_us);
+}
+
+std::string formatFrameId(const std::optional<VideoFrameMetadata>& metadata) {
+  if (!metadata || !metadata->frame_id.has_value()) {
+    return "n/a";
+  }
+
+  return std::to_string(*metadata->frame_id);
 }
 
 class UserTimestampedVideoConsumerDelegate : public RoomDelegate {
@@ -111,6 +119,7 @@ private:
           [identity](const VideoFrameEvent& event) {
             std::cout << "[consumer] from=" << identity << " size=" << event.frame.width() << "x"
                       << event.frame.height() << " capture_ts_us=" << event.timestamp_us
+                      << " metadata_frame_id=" << formatFrameId(event.metadata)
                       << " user_ts_us=" << formatUserTimestamp(event.metadata)
                       << " rotation=" << static_cast<int>(event.rotation) << "\n";
           },
@@ -120,7 +129,7 @@ private:
           identity, std::string(kTrackName),
           [identity](const VideoFrame& frame, const std::int64_t timestamp_us) {
             std::cout << "[consumer] from=" << identity << " size=" << frame.width() << "x" << frame.height()
-                      << " capture_ts_us=" << timestamp_us << " user_ts_us=ignored\n";
+                      << " capture_ts_us=" << timestamp_us << " metadata_frame_id=ignored user_ts_us=ignored\n";
           },
           stream_options);
     }

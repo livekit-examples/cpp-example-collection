@@ -83,6 +83,16 @@ WebRTC's platform Audio Device Module:
 ./build/platform_audio/sender/PlatformAudioSender <ws-url> <sender-token>
 ```
 
+### UserData
+
+The `user_data` example shows how to attach small sensor readings to video
+frames using SDK `v1.3.0` frame metadata:
+
+```bash
+./build/user_data/producer/UserDataProducer <ws-url> <producer-token>
+./build/user_data/consumer/UserDataConsumer <ws-url> <consumer-token>
+```
+
 ### Supported platforms
 
 Prebuilt SDKs are downloaded automatically for:

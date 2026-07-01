@@ -4,8 +4,9 @@ This example is split into two executables and can demonstrate all four
 producer/consumer combinations:
 
 - `UserTimestampedVideoProducer` publishes a synthetic video track named
-  `"timestamped-camera"` and stamps each frame with
-  `VideoCaptureOptions::metadata.user_timestamp_us`.
+  `"timestamped-camera"` and stamps each frame with both
+  `VideoCaptureOptions::metadata.user_timestamp_us` and
+  `VideoCaptureOptions::metadata.frame_id`.
 - `UserTimestampedVideoConsumer` subscribes to the remote
   `"timestamped-camera"` track by name with either the rich or legacy callback
   path.
@@ -19,19 +20,19 @@ LIVEKIT_URL=ws://localhost:7880 LIVEKIT_TOKEN=<consumer-token> ./UserTimestamped
 
 Requirements:
 
-- LiveKit C++ SDK `v0.3.4` or newer. This example uses
-  `VideoFrameMetadata` and `setOnVideoFrameEventCallback`, which are not
-  available in older SDK releases.
+- LiveKit C++ SDK `v1.3.0` or newer. This example uses `VideoFrameMetadata`
+  frame IDs and `setOnVideoFrameEventCallback`, which are not available in
+  older SDK releases.
 - To pin the SDK version when configuring the examples, pass
-  `-DLIVEKIT_SDK_VERSION=0.3.4` to CMake.
+  `-DLIVEKIT_SDK_VERSION=1.3.0` to CMake.
 
 Flags:
 
-- Producer default: sends user timestamps
-- Producer `--with-user-timestamp`: explicitly sends user timestamps
-- Producer `--without-user-timestamp`: does not send user timestamps
-- Consumer default: reads user timestamps through `setOnVideoFrameEventCallback`
-- Consumer `--with-user-timestamp`: explicitly reads user timestamps through
+- Producer default: sends user timestamps and frame IDs
+- Producer `--with-user-timestamp`: explicitly sends user timestamps and frame IDs
+- Producer `--without-user-timestamp`: does not send frame metadata
+- Consumer default: reads metadata through `setOnVideoFrameEventCallback`
+- Consumer `--with-user-timestamp`: explicitly reads metadata through
   `setOnVideoFrameEventCallback`
 - Consumer `--without-user-timestamp`: ignores metadata through the legacy
   `setOnVideoFrameCallback`
@@ -59,6 +60,8 @@ Matrix:
 Timestamp note:
 
 - `user_ts_us` is application metadata and is the value to compare end to end.
+- `metadata_frame_id` is application metadata and should match the producer's
+  frame counter when the frame metadata path is enabled.
 - `capture_ts_us` on the producer is the timestamp submitted to `captureFrame`.
 - `capture_ts_us` on the consumer is the received WebRTC frame timestamp.
 - Producer and consumer `capture_ts_us` values are not expected to match exactly,
