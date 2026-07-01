@@ -12,21 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_library(simple_joystick_sender_support STATIC
-  json_utils.cpp
-  json_utils.h
-  utils.cpp
-  utils.h
-)
-
-target_include_directories(simple_joystick_sender_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(simple_joystick_sender_support PUBLIC nlohmann_json::nlohmann_json)
-
-add_executable(SimpleJoystickSender
+add_executable(PlatformAudioSender
   main.cpp
 )
 
-target_include_directories(SimpleJoystickSender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(SimpleJoystickSender PRIVATE simple_joystick_sender_support ${LIVEKIT_CORE_TARGET})
+target_include_directories(PlatformAudioSender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(PlatformAudioSender PRIVATE ${LIVEKIT_CORE_TARGET})
 
-livekit_copy_windows_runtime_dlls(SimpleJoystickSender)
+livekit_copy_windows_runtime_dlls(PlatformAudioSender)

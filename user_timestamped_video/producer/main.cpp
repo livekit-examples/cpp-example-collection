@@ -93,8 +93,11 @@ int main(int argc, char* argv[]) {
       std::cerr << "[producer] failed to connect\n";
       exit_code = 1;
     } else {
-      std::cout << "[producer] connected as " << room.localParticipant()->identity() << " to room '"
-                << room.roomInfo().name << "'\n";
+      {
+        auto lp = room.localParticipant().lock();
+        std::cout << "[producer] connected as " << (lp ? lp->identity() : std::string("<unknown>")) << " to room '"
+                  << room.roomInfo().name << "'\n";
+      }
 
       auto source = std::make_shared<VideoSource>(kFrameWidth, kFrameHeight);
       auto track = LocalVideoTrack::createLocalVideoTrack("timestamped-camera", source);
@@ -104,9 +107,13 @@ int main(int argc, char* argv[]) {
         publish_options.source = TrackSource::SOURCE_CAMERA;
         publish_options.packet_trailer_features.user_timestamp = cli_options.use_user_timestamp;
 
-        room.localParticipant()->publishTrack(track, publish_options);
-        std::cout << "[producer] published camera track with user timestamp "
-                  << (cli_options.use_user_timestamp ? "enabled" : "disabled") << "\n";
+        {
+          auto lp = room.localParticipant().lock();
+          if (!lp) throw std::runtime_error("local participant unavailable");
+          lp->publishTrack(track, publish_options);
+          std::cout << "[producer] published camera track with user timestamp "
+                    << (cli_options.use_user_timestamp ? "enabled" : "disabled") << "\n";
+        }
 
         VideoFrame frame = VideoFrame::create(kFrameWidth, kFrameHeight, VideoBufferType::BGRA);
         const auto capture_start = std::chrono::steady_clock::now();
@@ -147,8 +154,11 @@ int main(int argc, char* argv[]) {
         exit_code = 1;
       }
 
-      if (track->publication()) {
-        room.localParticipant()->unpublishTrack(track->publication()->sid());
+      // best effort unpublish
+      if (auto lp = room.localParticipant().lock()) {
+        if (lp && track->publication()) {
+          lp->unpublishTrack(track->publication()->sid());
+        }
       }
     }
   }

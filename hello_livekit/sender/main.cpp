@@ -24,13 +24,13 @@
 ///   LIVEKIT_URL, LIVEKIT_SENDER_TOKEN
 
 #include <atomic>
-#include <cassert>
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <thread>
 
 #include "livekit/livekit.h"
@@ -84,27 +84,33 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  LocalParticipant* lp = room->localParticipant();
-  assert(lp);
+  std::shared_ptr<LocalDataTrack> data_track;
+  std::shared_ptr<LocalVideoTrack> video_track;
+  std::shared_ptr<VideoSource> video_source;
+  {
+    auto lp = room->localParticipant().lock();
+    if (!lp) {
+      throw std::runtime_error("[sender] local participant is null");
+    }
 
-  std::cout << "[info] [sender] Connected as identity='" << lp->identity() << "' room='" << room->roomInfo().name
-            << "' — pass this identity to HelloLivekitReceiver\n";
+    std::cout << "[info] [sender] Connected as identity='" << lp->identity() << "' room='" << room->roomInfo().name
+              << "' — pass this identity to HelloLivekitReceiver\n";
 
-  auto video_source = std::make_shared<VideoSource>(kWidth, kHeight);
+    video_source = std::make_shared<VideoSource>(kWidth, kHeight);
 
-  std::shared_ptr<LocalVideoTrack> video_track =
-      lp->publishVideoTrack(kVideoTrackName, video_source, TrackSource::SOURCE_CAMERA);
+    video_track = lp->publishVideoTrack(kVideoTrackName, video_source, TrackSource::SOURCE_CAMERA);
 
-  auto publish_result = lp->publishDataTrack(kDataTrackName);
-  if (!publish_result) {
-    const auto& error = publish_result.error();
-    std::cerr << "[error] Failed to publish data track: code=" << static_cast<std::uint32_t>(error.code)
-              << " message=" << error.message << "\n";
-    room.reset();
-    livekit::shutdown();
-    return 1;
+    auto publish_result = lp->publishDataTrack(kDataTrackName);
+    if (!publish_result) {
+      const auto& error = publish_result.error();
+      std::cerr << "[error] Failed to publish data track: code=" << static_cast<std::uint32_t>(error.code)
+                << " message=" << error.message << "\n";
+      room.reset();
+      livekit::shutdown();
+      return 1;
+    }
+    data_track = publish_result.value();
   }
-  std::shared_ptr<LocalDataTrack> data_track = publish_result.value();
 
   const auto t0 = std::chrono::steady_clock::now();
   std::uint64_t count = 0;

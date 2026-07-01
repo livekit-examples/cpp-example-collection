@@ -12,21 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_library(simple_joystick_receiver_support STATIC
-  json_utils.cpp
-  json_utils.h
-  utils.cpp
-  utils.h
-)
-
-target_include_directories(simple_joystick_receiver_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(simple_joystick_receiver_support PUBLIC nlohmann_json::nlohmann_json)
-
-add_executable(SimpleJoystickReceiver
+add_executable(PlatformAudioPlayer
   main.cpp
 )
 
-target_include_directories(SimpleJoystickReceiver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(SimpleJoystickReceiver PRIVATE simple_joystick_receiver_support ${LIVEKIT_CORE_TARGET})
+target_include_directories(PlatformAudioPlayer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(PlatformAudioPlayer PRIVATE ${LIVEKIT_CORE_TARGET})
 
-livekit_copy_windows_runtime_dlls(SimpleJoystickReceiver)
+livekit_copy_windows_runtime_dlls(PlatformAudioPlayer)

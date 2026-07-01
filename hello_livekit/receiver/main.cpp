@@ -25,11 +25,11 @@
 ///   LIVEKIT_URL, LIVEKIT_RECEIVER_TOKEN, LIVEKIT_SENDER_IDENTITY
 
 #include <atomic>
-#include <cassert>
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
+#include <stdexcept>
 #include <thread>
 
 #include "livekit/livekit.h"
@@ -83,8 +83,10 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  LocalParticipant* lp = room->localParticipant();
-  assert(lp);
+  auto lp = room->localParticipant().lock();
+  if (!lp) {
+    throw std::runtime_error("[receiver] local participant is null");
+  }
 
   std::cout << "[info] [receiver] Connected as identity='" << lp->identity() << "' room='" << room->roomInfo().name
             << "'; subscribing to sender identity='" << sender_identity << "'\n";

@@ -59,9 +59,11 @@ public:
       : room_(room), read_user_timestamp_(read_user_timestamp) {}
 
   void registerExistingParticipants() {
-    for (const auto& participant : room_.remoteParticipants()) {
-      if (participant) {
+    for (const auto& weak_participant : room_.remoteParticipants()) {
+      if (auto participant = weak_participant.lock()) {
         registerRemoteVideoCallback(participant->identity());
+      } else {
+        throw std::runtime_error("unable to lock provided remote participant");
       }
     }
   }
@@ -163,9 +165,13 @@ int main(int argc, char* argv[]) {
       std::cerr << "[consumer] failed to connect\n";
       exit_code = 1;
     } else {
-      std::cout << "[consumer] connected as " << room.localParticipant()->identity() << " to room '"
-                << room.roomInfo().name << "' with user timestamp "
-                << (cli_options.use_user_timestamp ? "enabled" : "ignored") << "\n";
+      if (auto lp = room.localParticipant().lock()) {
+        std::cout << "[consumer] connected as " << (lp ? lp->identity() : std::string("<unknown>")) << " to room '"
+                  << room.roomInfo().name << "' with user timestamp "
+                  << (cli_options.use_user_timestamp ? "enabled" : "ignored") << "\n";
+      } else {
+        throw std::runtime_error("unable to lock local participant");
+      }
 
       delegate.registerExistingParticipants();
 
@@ -173,9 +179,11 @@ int main(int argc, char* argv[]) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
       }
 
-      for (const auto& participant : room.remoteParticipants()) {
-        if (participant) {
+      for (const auto& weak_participant : room.remoteParticipants()) {
+        if (auto participant = weak_participant.lock()) {
           room.clearOnVideoFrameCallback(participant->identity(), std::string(kTrackName));
+        } else {
+          throw std::runtime_error("unable to lock provided remote participant");
         }
       }
     }

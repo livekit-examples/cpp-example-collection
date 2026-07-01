@@ -304,7 +304,9 @@ int main(int argc, char* argv[]) {
   audioOpts.dtx = false;
   audioOpts.simulcast = false;
   try {
-    room->localParticipant()->publishTrack(audioTrack, audioOpts);
+    auto lp = room->localParticipant().lock();
+    if (!lp) throw std::runtime_error("local participant unavailable");
+    lp->publishTrack(audioTrack, audioOpts);
     const auto audioPub = audioTrack->publication();
 
     std::cout << "Published track:\n"
@@ -331,7 +333,9 @@ int main(int argc, char* argv[]) {
   try {
     // publishTrack takes std::shared_ptr<Track>, LocalAudioTrack derives from
     // Track
-    room->localParticipant()->publishTrack(videoTrack, videoOpts);
+    auto lp = room->localParticipant().lock();
+    if (!lp) throw std::runtime_error("local participant unavailable");
+    lp->publishTrack(videoTrack, videoOpts);
 
     const auto videoPub = videoTrack->publication();
 
@@ -368,11 +372,13 @@ int main(int argc, char* argv[]) {
   // Must be cleaned up before FfiClient::instance().shutdown();
   room->setDelegate(nullptr);
 
-  if (audioTrack->publication()) {
-    room->localParticipant()->unpublishTrack(audioTrack->publication()->sid());
-  }
-  if (videoTrack->publication()) {
-    room->localParticipant()->unpublishTrack(videoTrack->publication()->sid());
+  if (auto lp = room->localParticipant().lock()) {
+    if (audioTrack->publication()) {
+      lp->unpublishTrack(audioTrack->publication()->sid());
+    }
+    if (videoTrack->publication()) {
+      lp->unpublishTrack(videoTrack->publication()->sid());
+    }
   }
   audioTrack.reset();
   videoTrack.reset();
