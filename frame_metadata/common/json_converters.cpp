@@ -17,7 +17,6 @@
 #include "json_converters.h"
 
 #include <nlohmann/json.hpp>
-#include <stdexcept>
 
 #include "constants.h"
 
@@ -29,16 +28,20 @@ std::string sensorReadingToJson(const SensorReading& reading) {
   return json.dump();
 }
 
-SensorReading sensorReadingFromJson(const std::string& json_text) {
-  try {
-    const auto json = nlohmann::json::parse(json_text);
-
-    SensorReading reading;
-    reading.temperature_c = json.at(kTemperatureCKey).get<double>();
-    return reading;
-  } catch (const nlohmann::json::exception& error) {
-    throw std::runtime_error(std::string("Failed to parse sensor reading JSON: ") + error.what());
+std::optional<SensorReading> sensorReadingFromJson(const std::string& json_text) {
+  const auto json = nlohmann::json::parse(json_text, nullptr, false);
+  if (json.is_discarded() || !json.is_object()) {
+    return std::nullopt;
   }
+
+  const auto temperature_it = json.find(kTemperatureCKey);
+  if (temperature_it == json.end() || !temperature_it->is_number()) {
+    return std::nullopt;
+  }
+
+  SensorReading reading;
+  reading.temperature_c = temperature_it->get<double>();
+  return reading;
 }
 
 } // namespace frame_metadata

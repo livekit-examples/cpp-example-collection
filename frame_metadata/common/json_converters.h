@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 
 #include "messages.h"
@@ -23,6 +24,6 @@
 namespace frame_metadata {
 
 std::string sensorReadingToJson(const SensorReading& reading);
-SensorReading sensorReadingFromJson(const std::string& json_text);
+std::optional<SensorReading> sensorReadingFromJson(const std::string& json_text);
 
 } // namespace frame_metadata

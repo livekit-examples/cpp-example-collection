@@ -53,11 +53,7 @@ std::optional<frame_metadata::SensorReading> parseSensorReading(
     return std::nullopt;
   }
 
-  try {
-    return frame_metadata::sensorReadingFromJson(frame_metadata::toString(*metadata->user_data));
-  } catch (const std::exception&) {
-    return std::nullopt;
-  }
+  return frame_metadata::sensorReadingFromJson(frame_metadata::toString(*metadata->user_data));
 }
 
 class FrameMetadataConsumerDelegate : public RoomDelegate {
