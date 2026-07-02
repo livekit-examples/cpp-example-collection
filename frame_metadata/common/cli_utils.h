@@ -18,19 +18,21 @@
 
 #include <atomic>
 #include <csignal>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <string>
 #include <vector>
 
-namespace user_timestamped_video {
+namespace frame_metadata {
+
+inline constexpr char kDefaultLiveKitUrl[] = "ws://localhost:7880";
 
 enum class ParseResult { Ok, Help, Error };
 
 struct CliOptions {
   std::string url;
   std::string token;
-  bool use_user_timestamp = true;
 };
 
 inline std::atomic<bool> g_running{true};
@@ -53,11 +55,15 @@ inline std::string getenvOrEmpty(const char* name) {
 
 inline void printUsage(const char* program) {
   std::cerr << "Usage:\n"
-            << "  " << program << " <ws-url> <token> "
-            << "[--with-user-timestamp|--without-user-timestamp]\n"
-            << "or:\n"
-            << "  LIVEKIT_URL=... LIVEKIT_TOKEN=... " << program
-            << " [--with-user-timestamp|--without-user-timestamp]\n";
+            << "  " << program << " [<ws-url> <token>]\n"
+            << "\n"
+            << "Environment:\n"
+            << "  LIVEKIT_URL    defaults to " << kDefaultLiveKitUrl << " when unset\n"
+            << "  LIVEKIT_TOKEN  required unless passed as the second argument\n"
+            << "\n"
+            << "Example:\n"
+            << "  export LIVEKIT_TOKEN=<token>\n"
+            << "  " << program << "\n";
 }
 
 inline ParseResult parseArgs(int argc, char* argv[], CliOptions& options) {
@@ -68,14 +74,6 @@ inline ParseResult parseArgs(int argc, char* argv[], CliOptions& options) {
     const std::string arg = argv[i];
     if (arg == "-h" || arg == "--help") {
       return ParseResult::Help;
-    }
-    if (arg == "--without-user-timestamp") {
-      options.use_user_timestamp = false;
-      continue;
-    }
-    if (arg == "--with-user-timestamp") {
-      options.use_user_timestamp = true;
-      continue;
     }
     if (!arg.empty() && arg[0] == '-') {
       return ParseResult::Error;
@@ -98,7 +96,19 @@ inline ParseResult parseArgs(int argc, char* argv[], CliOptions& options) {
     return ParseResult::Error;
   }
 
-  return (options.url.empty() || options.token.empty()) ? ParseResult::Error : ParseResult::Ok;
+  if (options.url.empty()) {
+    options.url = kDefaultLiveKitUrl;
+  }
+
+  return options.token.empty() ? ParseResult::Error : ParseResult::Ok;
 }
 
-} // namespace user_timestamped_video
+inline std::vector<std::uint8_t> toPayload(const std::string& text) {
+  return std::vector<std::uint8_t>(text.begin(), text.end());
+}
+
+inline std::string toString(const std::vector<std::uint8_t>& payload) {
+  return std::string(payload.begin(), payload.end());
+}
+
+} // namespace frame_metadata

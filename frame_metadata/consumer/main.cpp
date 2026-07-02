@@ -14,49 +14,51 @@
  * limitations under the License.
  */
 
-/// UserTimestampedVideoConsumer
+/// frame_metadata_consumer
 ///
 /// Receives remote video frames via `Room::setOnVideoFrameEventCallback()` and
-/// logs any `VideoFrameMetadata::user_timestamp_us` values that arrive. Pair
-/// with `UserTimestampedVideoProducer` running in another process.
+/// logs `VideoFrameMetadata::user_timestamp_us`, `frame_id`, and `user_data`.
 ///
 /// Usage:
-///   UserTimestampedVideoConsumer <ws-url> <token>
-///       [--with-user-timestamp|--without-user-timestamp]
+///   frame_metadata_consumer [<ws-url> <token>]
 ///
-/// Or via environment variables:
-///   LIVEKIT_URL, LIVEKIT_TOKEN
+/// Or via environment variables (LIVEKIT_URL defaults to ws://localhost:7880):
+///   export LIVEKIT_TOKEN=<token>
+///   frame_metadata_consumer
 
 #include <chrono>
 #include <cstdint>
+#include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <unordered_set>
 
-#include "../common/cli_utils.h"
+#include "cli_utils.h"
+#include "constants.h"
+#include "json_converters.h"
 #include "livekit/livekit.h"
+#include "messages.h"
 
 using namespace livekit;
 
 namespace {
 
-constexpr const char* kTrackName = "timestamped-camera";
-
-std::string formatUserTimestamp(const std::optional<VideoFrameMetadata>& metadata) {
-  if (!metadata || !metadata->user_timestamp_us.has_value()) {
-    return "n/a";
+std::optional<frame_metadata::SensorReading> parseSensorReading(
+    const std::optional<VideoFrameMetadata>& metadata) {
+  if (!metadata || !metadata->user_data.has_value()) {
+    return std::nullopt;
   }
 
-  return std::to_string(*metadata->user_timestamp_us);
+  return frame_metadata::sensorReadingFromJson(frame_metadata::toString(*metadata->user_data));
 }
 
-class UserTimestampedVideoConsumerDelegate : public RoomDelegate {
+class FrameMetadataConsumerDelegate : public RoomDelegate {
 public:
-  UserTimestampedVideoConsumerDelegate(Room& room, bool read_user_timestamp)
-      : room_(room), read_user_timestamp_(read_user_timestamp) {}
+  explicit FrameMetadataConsumerDelegate(Room& room) : room_(room) {}
 
   void registerExistingParticipants() {
     for (const auto& weak_participant : room_.remoteParticipants()) {
@@ -83,7 +85,7 @@ public:
     }
 
     const std::string identity = event.participant->identity();
-    room_.clearOnVideoFrameCallback(identity, std::string(kTrackName));
+    room_.clearOnVideoFrameCallback(identity, std::string(frame_metadata::kVideoTrackName));
 
     {
       std::lock_guard<std::mutex> lock(mutex_);
@@ -105,32 +107,37 @@ private:
     VideoStream::Options stream_options;
     stream_options.format = VideoBufferType::RGBA;
 
-    if (read_user_timestamp_) {
-      room_.setOnVideoFrameEventCallback(
-          identity, std::string(kTrackName),
-          [identity](const VideoFrameEvent& event) {
-            std::cout << "[consumer] from=" << identity << " size=" << event.frame.width() << "x"
-                      << event.frame.height() << " capture_ts_us=" << event.timestamp_us
-                      << " user_ts_us=" << formatUserTimestamp(event.metadata)
-                      << " rotation=" << static_cast<int>(event.rotation) << "\n";
-          },
-          stream_options);
-    } else {
-      room_.setOnVideoFrameCallback(
-          identity, std::string(kTrackName),
-          [identity](const VideoFrame& frame, const std::int64_t timestamp_us) {
-            std::cout << "[consumer] from=" << identity << " size=" << frame.width() << "x" << frame.height()
-                      << " capture_ts_us=" << timestamp_us << " user_ts_us=ignored\n";
-          },
-          stream_options);
-    }
+    room_.setOnVideoFrameEventCallback(
+        identity, std::string(frame_metadata::kVideoTrackName),
+        [](const VideoFrameEvent& event) {
+          if (!event.metadata || !event.metadata->frame_id || !event.metadata->user_timestamp_us ||
+              !event.metadata->user_data) {
+            return;
+          }
 
-    std::cout << "[consumer] listening for video frames from " << identity << " track=\"" << kTrackName
-              << "\" with user timestamp " << (read_user_timestamp_ ? "enabled" : "ignored") << "\n";
+          const std::uint32_t frame_id = *event.metadata->frame_id;
+          if (frame_id % 5 != 0) {
+            return;
+          }
+
+          const auto reading = parseSensorReading(event.metadata);
+          if (!reading) {
+            return;
+          }
+
+          std::cout << std::fixed << std::setprecision(2) << "[consumer] frame_id=" << frame_id
+                    << " capture_ts_us=" << event.timestamp_us
+                    << " user_ts_us=" << *event.metadata->user_timestamp_us
+                    << " temperature_c=" << reading->temperature_c
+                    << " user_data_bytes=" << event.metadata->user_data->size() << "\n";
+        },
+        stream_options);
+
+    std::cout << "[consumer] listening for video frames from " << identity << " track=\""
+              << frame_metadata::kVideoTrackName << "\" with frame metadata\n";
   }
 
   Room& room_;
-  bool read_user_timestamp_;
   std::mutex mutex_;
   std::unordered_set<std::string> registered_identities_;
 };
@@ -138,15 +145,15 @@ private:
 } // namespace
 
 int main(int argc, char* argv[]) {
-  user_timestamped_video::CliOptions cli_options;
+  frame_metadata::CliOptions cli_options;
 
-  const user_timestamped_video::ParseResult parse_result = user_timestamped_video::parseArgs(argc, argv, cli_options);
-  if (parse_result != user_timestamped_video::ParseResult::Ok) {
-    user_timestamped_video::printUsage(argv[0]);
-    return parse_result == user_timestamped_video::ParseResult::Help ? 0 : 1;
+  const frame_metadata::ParseResult parse_result = frame_metadata::parseArgs(argc, argv, cli_options);
+  if (parse_result != frame_metadata::ParseResult::Ok) {
+    frame_metadata::printUsage(argv[0]);
+    return parse_result == frame_metadata::ParseResult::Help ? 0 : 1;
   }
 
-  user_timestamped_video::installSignalHandlers();
+  frame_metadata::installSignalHandlers();
 
   livekit::initialize(livekit::LogLevel::Info);
   int exit_code = 0;
@@ -157,7 +164,7 @@ int main(int argc, char* argv[]) {
     options.auto_subscribe = true;
     options.dynacast = false;
 
-    UserTimestampedVideoConsumerDelegate delegate(room, cli_options.use_user_timestamp);
+    FrameMetadataConsumerDelegate delegate(room);
     room.setDelegate(&delegate);
 
     std::cout << "[consumer] connecting to " << cli_options.url << "\n";
@@ -167,21 +174,20 @@ int main(int argc, char* argv[]) {
     } else {
       if (auto lp = room.localParticipant().lock()) {
         std::cout << "[consumer] connected as " << (lp ? lp->identity() : std::string("<unknown>")) << " to room '"
-                  << room.roomInfo().name << "' with user timestamp "
-                  << (cli_options.use_user_timestamp ? "enabled" : "ignored") << "\n";
+                  << room.roomInfo().name << "'\n";
       } else {
         throw std::runtime_error("unable to lock local participant");
       }
 
       delegate.registerExistingParticipants();
 
-      while (user_timestamped_video::isRunning()) {
+      while (frame_metadata::isRunning()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
       }
 
       for (const auto& weak_participant : room.remoteParticipants()) {
         if (auto participant = weak_participant.lock()) {
-          room.clearOnVideoFrameCallback(participant->identity(), std::string(kTrackName));
+          room.clearOnVideoFrameCallback(participant->identity(), std::string(frame_metadata::kVideoTrackName));
         } else {
           throw std::runtime_error("unable to lock provided remote participant");
         }
