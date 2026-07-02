@@ -21,7 +21,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Make "include(LiveKitSDK)" search in ./cmake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(LIVEKIT_SDK_VERSION "latest" CACHE STRING "LiveKit C++ SDK version (e.g. 0.2.0 or latest)")
+set(LIVEKIT_SDK_VERSION "latest" CACHE STRING "LiveKit C++ SDK version (e.g. 1.3.0 or latest)")
 set(LIVEKIT_LOCAL_SDK_DIR "" CACHE PATH "Path to a local LiveKit SDK install prefix (skips download)")
 
 if(LIVEKIT_LOCAL_SDK_DIR)
@@ -82,6 +82,7 @@ endfunction()
 include(ExampleDeps)
 
 add_subdirectory(basic_room)
+add_subdirectory(token_source)
 add_subdirectory(simple_room)
 add_subdirectory(simple_rpc)
 add_subdirectory(simple_data_stream)
