@@ -18,7 +18,7 @@ disconnects.
 | --- | --- | --- |
 | `LiteralTokenSource` | `token_source_literal.cpp` | You already have a URL + JWT (minted out of band, e.g. `lk token create`). The SDK consumes them as-is. |
 | `EndpointTokenSource` | `token_source_endpoint.cpp` | Recommended for production. The SDK POSTs request options to your backend token endpoint, which returns the URL + a fresh JWT. API keys stay server-side. |
-| `SandboxTokenSource` | `token_source_sandbox.cpp` | Local development only. Uses LiveKit Cloud's sandbox token server. Not for production. |
+| `SandboxTokenSource` | `token_source_sandbox.cpp` | Local development only. Uses LiveKit Cloud's sandbox token server. **Not for production.** |
 | `CustomTokenSource` | `token_source_custom.cpp` | You have an internal auth/token system. Plug in your own async callback that returns credentials. |
 | `CachingTokenSource` | `token_source_caching.cpp` | A decorator that adds JWT-aware caching around any configurable source (endpoint/sandbox/custom) to cut down on fetch calls. |
 
