@@ -21,12 +21,10 @@
 
 #include "constants.h"
 
-namespace user_data {
+namespace frame_metadata {
 
 std::string sensorReadingToJson(const SensorReading& reading) {
   nlohmann::json json;
-  json[kFrameIdKey] = reading.frame_id;
-  json[kTimestampUsKey] = reading.timestamp_us;
   json[kTemperatureCKey] = reading.temperature_c;
   return json.dump();
 }
@@ -36,8 +34,6 @@ SensorReading sensorReadingFromJson(const std::string& json_text) {
     const auto json = nlohmann::json::parse(json_text);
 
     SensorReading reading;
-    reading.frame_id = json.at(kFrameIdKey).get<std::uint32_t>();
-    reading.timestamp_us = json.at(kTimestampUsKey).get<std::uint64_t>();
     reading.temperature_c = json.at(kTemperatureCKey).get<double>();
     return reading;
   } catch (const nlohmann::json::exception& error) {
@@ -45,4 +41,4 @@ SensorReading sensorReadingFromJson(const std::string& json_text) {
   }
 }
 
-} // namespace user_data
+} // namespace frame_metadata

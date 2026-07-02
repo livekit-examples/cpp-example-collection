@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_executable(UserTimestampedVideoProducer
-  main.cpp
+add_library(frame_metadata_support STATIC
+  common/json_converters.cpp
+  common/json_converters.h
+  common/cli_utils.h
+  common/constants.h
+  common/messages.h
 )
 
-target_include_directories(UserTimestampedVideoProducer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(UserTimestampedVideoProducer PRIVATE ${LIVEKIT_CORE_TARGET})
+target_include_directories(frame_metadata_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
+target_link_libraries(frame_metadata_support PUBLIC nlohmann_json::nlohmann_json)
 
-livekit_copy_windows_runtime_dlls(UserTimestampedVideoProducer)
+add_subdirectory(producer)
+add_subdirectory(consumer)

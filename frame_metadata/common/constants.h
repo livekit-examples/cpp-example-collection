@@ -16,12 +16,10 @@
 
 #pragma once
 
-namespace user_data {
+namespace frame_metadata {
 
 inline constexpr char kVideoTrackName[] = "sensor-camera";
 
-inline constexpr char kFrameIdKey[] = "frame_id";
-inline constexpr char kTimestampUsKey[] = "timestamp_us";
 inline constexpr char kTemperatureCKey[] = "temperature_c";
 
-} // namespace user_data
+} // namespace frame_metadata

@@ -16,13 +16,10 @@
 
 #pragma once
 
-#include <string>
+namespace frame_metadata {
 
-#include "messages.h"
+struct SensorReading {
+  double temperature_c = 0.0;
+};
 
-namespace user_data {
-
-std::string sensorReadingToJson(const SensorReading& reading);
-SensorReading sensorReadingFromJson(const std::string& json_text);
-
-} // namespace user_data
+} // namespace frame_metadata

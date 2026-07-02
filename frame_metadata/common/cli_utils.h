@@ -24,7 +24,9 @@
 #include <string>
 #include <vector>
 
-namespace user_data {
+namespace frame_metadata {
+
+inline constexpr char kDefaultLiveKitUrl[] = "ws://localhost:7880";
 
 enum class ParseResult { Ok, Help, Error };
 
@@ -53,9 +55,15 @@ inline std::string getenvOrEmpty(const char* name) {
 
 inline void printUsage(const char* program) {
   std::cerr << "Usage:\n"
-            << "  " << program << " <ws-url> <token>\n"
-            << "or:\n"
-            << "  LIVEKIT_URL=... LIVEKIT_TOKEN=... " << program << "\n";
+            << "  " << program << " [<ws-url> <token>]\n"
+            << "\n"
+            << "Environment:\n"
+            << "  LIVEKIT_URL    defaults to " << kDefaultLiveKitUrl << " when unset\n"
+            << "  LIVEKIT_TOKEN  required unless passed as the second argument\n"
+            << "\n"
+            << "Example:\n"
+            << "  export LIVEKIT_TOKEN=<token>\n"
+            << "  " << program << "\n";
 }
 
 inline ParseResult parseArgs(int argc, char* argv[], CliOptions& options) {
@@ -88,7 +96,11 @@ inline ParseResult parseArgs(int argc, char* argv[], CliOptions& options) {
     return ParseResult::Error;
   }
 
-  return (options.url.empty() || options.token.empty()) ? ParseResult::Error : ParseResult::Ok;
+  if (options.url.empty()) {
+    options.url = kDefaultLiveKitUrl;
+  }
+
+  return options.token.empty() ? ParseResult::Error : ParseResult::Ok;
 }
 
 inline std::vector<std::uint8_t> toPayload(const std::string& text) {
@@ -99,4 +111,4 @@ inline std::string toString(const std::vector<std::uint8_t>& payload) {
   return std::string(payload.begin(), payload.end());
 }
 
-} // namespace user_data
+} // namespace frame_metadata

@@ -16,14 +16,13 @@
 
 #pragma once
 
-#include <cstdint>
+#include <string>
 
-namespace user_data {
+#include "messages.h"
 
-struct SensorReading {
-  std::uint32_t frame_id = 0;
-  std::uint64_t timestamp_us = 0;
-  double temperature_c = 0.0;
-};
+namespace frame_metadata {
 
-} // namespace user_data
+std::string sensorReadingToJson(const SensorReading& reading);
+SensorReading sensorReadingFromJson(const std::string& json_text);
+
+} // namespace frame_metadata

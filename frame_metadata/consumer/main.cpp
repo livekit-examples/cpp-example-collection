@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-/// UserDataConsumer
+/// frame_metadata_consumer
 ///
-/// Receives video frame events with v1.3.0 metadata and parses small
-/// temperature readings from `VideoFrameMetadata::user_data`.
+/// Receives remote video frames via `Room::setOnVideoFrameEventCallback()` and
+/// logs `VideoFrameMetadata::user_timestamp_us`, `frame_id`, and `user_data`.
 ///
 /// Usage:
-///   UserDataConsumer <ws-url> <token>
+///   frame_metadata_consumer [<ws-url> <token>]
 ///
-/// Or via environment variables:
-///   LIVEKIT_URL, LIVEKIT_TOKEN
+/// Or via environment variables (LIVEKIT_URL defaults to ws://localhost:7880):
+///   export LIVEKIT_TOKEN=<token>
+///   frame_metadata_consumer
 
 #include <chrono>
 #include <cstdint>
@@ -46,29 +47,22 @@ using namespace livekit;
 
 namespace {
 
-std::optional<std::uint32_t> metadataFrameId(const std::optional<VideoFrameMetadata>& metadata) {
-  if (!metadata || !metadata->frame_id.has_value()) {
-    return std::nullopt;
-  }
-
-  return *metadata->frame_id;
-}
-
-std::optional<user_data::SensorReading> metadataSensorReading(const std::optional<VideoFrameMetadata>& metadata) {
+std::optional<frame_metadata::SensorReading> parseSensorReading(
+    const std::optional<VideoFrameMetadata>& metadata) {
   if (!metadata || !metadata->user_data.has_value()) {
     return std::nullopt;
   }
 
-  return user_data::sensorReadingFromJson(user_data::toString(*metadata->user_data));
+  try {
+    return frame_metadata::sensorReadingFromJson(frame_metadata::toString(*metadata->user_data));
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
 }
 
-std::string formatOptionalTimestamp(std::optional<std::uint64_t> timestamp_us) {
-  return timestamp_us ? std::to_string(*timestamp_us) : std::string("n/a");
-}
-
-class UserDataConsumerDelegate : public RoomDelegate {
+class FrameMetadataConsumerDelegate : public RoomDelegate {
 public:
-  explicit UserDataConsumerDelegate(Room& room) : room_(room) {}
+  explicit FrameMetadataConsumerDelegate(Room& room) : room_(room) {}
 
   void registerExistingParticipants() {
     for (const auto& weak_participant : room_.remoteParticipants()) {
@@ -77,18 +71,6 @@ public:
       } else {
         throw std::runtime_error("unable to lock provided remote participant");
       }
-    }
-  }
-
-  void clearAllCallbacks() {
-    std::unordered_set<std::string> identities;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      identities.swap(registered_identities_);
-    }
-
-    for (const auto& identity : identities) {
-      room_.clearOnVideoFrameCallback(identity, std::string(user_data::kVideoTrackName));
     }
   }
 
@@ -107,7 +89,8 @@ public:
     }
 
     const std::string identity = event.participant->identity();
-    room_.clearOnVideoFrameCallback(identity, std::string(user_data::kVideoTrackName));
+    room_.clearOnVideoFrameCallback(identity, std::string(frame_metadata::kVideoTrackName));
+
     {
       std::lock_guard<std::mutex> lock(mutex_);
       registered_identities_.erase(identity);
@@ -129,37 +112,33 @@ private:
     stream_options.format = VideoBufferType::RGBA;
 
     room_.setOnVideoFrameEventCallback(
-        identity, std::string(user_data::kVideoTrackName),
-        [identity](const VideoFrameEvent& event) {
-          try {
-            const auto frame_id = metadataFrameId(event.metadata);
-            const auto reading = metadataSensorReading(event.metadata);
-
-            std::cout << "[consumer] from=" << identity << " size=" << event.frame.width() << "x"
-                      << event.frame.height() << " capture_ts_us=" << event.timestamp_us
-                      << " metadata_frame_id=" << (frame_id ? std::to_string(*frame_id) : std::string("n/a"))
-                      << " user_ts_us=" << formatOptionalTimestamp(event.metadata ? event.metadata->user_timestamp_us
-                                                                                  : std::nullopt);
-
-            if (reading) {
-              std::cout << std::fixed << std::setprecision(2) << " reading_frame_id=" << reading->frame_id
-                        << " temperature_c=" << reading->temperature_c
-                        << " reading_ts_us=" << reading->timestamp_us
-                        << " user_data_bytes=" << event.metadata->user_data->size();
-            } else {
-              std::cout << " user_data=n/a";
-            }
-
-            std::cout << "\n";
-          } catch (const std::exception& error) {
-            std::cerr << "[consumer] failed to process frame metadata from " << identity << ": " << error.what()
-                      << "\n";
+        identity, std::string(frame_metadata::kVideoTrackName),
+        [](const VideoFrameEvent& event) {
+          if (!event.metadata || !event.metadata->frame_id || !event.metadata->user_timestamp_us ||
+              !event.metadata->user_data) {
+            return;
           }
+
+          const std::uint32_t frame_id = *event.metadata->frame_id;
+          if (frame_id % 5 != 0) {
+            return;
+          }
+
+          const auto reading = parseSensorReading(event.metadata);
+          if (!reading) {
+            return;
+          }
+
+          std::cout << std::fixed << std::setprecision(2) << "[consumer] frame_id=" << frame_id
+                    << " capture_ts_us=" << event.timestamp_us
+                    << " user_ts_us=" << *event.metadata->user_timestamp_us
+                    << " temperature_c=" << reading->temperature_c
+                    << " user_data_bytes=" << event.metadata->user_data->size() << "\n";
         },
         stream_options);
 
     std::cout << "[consumer] listening for video frames from " << identity << " track=\""
-              << user_data::kVideoTrackName << "\"\n";
+              << frame_metadata::kVideoTrackName << "\" with frame metadata\n";
   }
 
   Room& room_;
@@ -170,15 +149,15 @@ private:
 } // namespace
 
 int main(int argc, char* argv[]) {
-  user_data::CliOptions cli_options;
+  frame_metadata::CliOptions cli_options;
 
-  const user_data::ParseResult parse_result = user_data::parseArgs(argc, argv, cli_options);
-  if (parse_result != user_data::ParseResult::Ok) {
-    user_data::printUsage(argv[0]);
-    return parse_result == user_data::ParseResult::Help ? 0 : 1;
+  const frame_metadata::ParseResult parse_result = frame_metadata::parseArgs(argc, argv, cli_options);
+  if (parse_result != frame_metadata::ParseResult::Ok) {
+    frame_metadata::printUsage(argv[0]);
+    return parse_result == frame_metadata::ParseResult::Help ? 0 : 1;
   }
 
-  user_data::installSignalHandlers();
+  frame_metadata::installSignalHandlers();
 
   livekit::initialize(livekit::LogLevel::Info);
   int exit_code = 0;
@@ -189,7 +168,7 @@ int main(int argc, char* argv[]) {
     options.auto_subscribe = true;
     options.dynacast = false;
 
-    UserDataConsumerDelegate delegate(room);
+    FrameMetadataConsumerDelegate delegate(room);
     room.setDelegate(&delegate);
 
     std::cout << "[consumer] connecting to " << cli_options.url << "\n";
@@ -198,18 +177,25 @@ int main(int argc, char* argv[]) {
       exit_code = 1;
     } else {
       if (auto lp = room.localParticipant().lock()) {
-        std::cout << "[consumer] connected as " << lp->identity() << " to room '" << room.roomInfo().name << "'\n";
+        std::cout << "[consumer] connected as " << (lp ? lp->identity() : std::string("<unknown>")) << " to room '"
+                  << room.roomInfo().name << "'\n";
       } else {
         throw std::runtime_error("unable to lock local participant");
       }
 
       delegate.registerExistingParticipants();
 
-      while (user_data::isRunning()) {
+      while (frame_metadata::isRunning()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
       }
 
-      delegate.clearAllCallbacks();
+      for (const auto& weak_participant : room.remoteParticipants()) {
+        if (auto participant = weak_participant.lock()) {
+          room.clearOnVideoFrameCallback(participant->identity(), std::string(frame_metadata::kVideoTrackName));
+        } else {
+          throw std::runtime_error("unable to lock provided remote participant");
+        }
+      }
     }
 
     room.setDelegate(nullptr);

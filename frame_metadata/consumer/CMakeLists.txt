@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_library(user_data_support STATIC
-  common/json_converters.cpp
-  common/json_converters.h
-  common/cli_utils.h
-  common/constants.h
-  common/messages.h
+add_executable(frame_metadata_consumer
+  main.cpp
 )
 
-target_include_directories(user_data_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
-target_link_libraries(user_data_support PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(frame_metadata_consumer PRIVATE frame_metadata_support ${LIVEKIT_CORE_TARGET})
 
-add_subdirectory(producer)
-add_subdirectory(consumer)
+livekit_copy_windows_runtime_dlls(frame_metadata_consumer)
