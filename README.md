@@ -7,6 +7,24 @@ The goal of these examples is to demonstrate common usage patterns of the
 LiveKit C++ SDK (connecting to a room, publishing tracks, RPC, data streams,
 etc.) without requiring users to build the SDK from source.
 
+## Example Directories
+
+| Example sub-folder | Folder path | Description |
+| --- | --- | --- |
+| `basic_room` | `basic_room/` | Connects to a room and publishes synthetic audio and video tracks. |
+| `token_source` | `token_source/` | Shows ways to supply connection credentials through LiveKit token sources. |
+| `simple_room` | `simple_room/` | Connects to a room, publishes local media, and subscribes to remote media. |
+| `simple_rpc` | `simple_rpc/` | Demonstrates LiveKit RPC calls between participants. |
+| `simple_data_stream` | `simple_data_stream/` | Sends and receives text and byte streams over LiveKit data streams. |
+| `logging_levels/basic_usage` | `logging_levels/basic_usage/` | Demonstrates SDK log-level filtering and log callbacks. |
+| `logging_levels/custom_sinks` | `logging_levels/custom_sinks/` | Shows custom SDK log sinks such as file, JSON, and ROS-style output. |
+| `hello_livekit/sender` | `hello_livekit/sender/` | Publishes synthetic video and data for a paired receiver example. |
+| `hello_livekit/receiver` | `hello_livekit/receiver/` | Subscribes to the sender example's video and data tracks. |
+| `platform_audio` | `platform_audio/` | Demonstrates microphone capture and speaker playout with platform audio devices. |
+| `ping_pong/ping` | `ping_pong/ping/` | Sends ping messages over a data track and records response latency. |
+| `ping_pong/pong` | `ping_pong/pong/` | Listens for ping messages and publishes matching pong responses. |
+| `frame_metadata` | `frame_metadata/` | Publishes and consumes video frames with frame metadata such as IDs, timestamps, and user data. |
+
 ## How the SDK is provided
 
 These examples **automatically download a prebuilt LiveKit C++ SDK release**
@@ -76,6 +94,12 @@ After building, example binaries are located under:
 
 ```bash
 build/<example-name>/
+```
+
+For example:
+
+```bash
+./build/basic_room/basic_room --url <ws-url> --token <token>
 ```
 
 ### Supported platforms

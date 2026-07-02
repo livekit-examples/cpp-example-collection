@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_executable(UserTimestampedVideoConsumer
+add_executable(frame_metadata_consumer
   main.cpp
 )
 
-target_include_directories(UserTimestampedVideoConsumer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(UserTimestampedVideoConsumer PRIVATE ${LIVEKIT_CORE_TARGET})
+target_link_libraries(frame_metadata_consumer PRIVATE frame_metadata_support ${LIVEKIT_CORE_TARGET})
 
-livekit_copy_windows_runtime_dlls(UserTimestampedVideoConsumer)
+livekit_copy_windows_runtime_dlls(frame_metadata_consumer)

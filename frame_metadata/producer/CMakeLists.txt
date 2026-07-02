@@ -12,5 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_subdirectory(producer)
-add_subdirectory(consumer)
+add_executable(frame_metadata_producer
+  main.cpp
+)
+
+target_link_libraries(frame_metadata_producer PRIVATE frame_metadata_support ${LIVEKIT_CORE_TARGET})
+
+livekit_copy_windows_runtime_dlls(frame_metadata_producer)
