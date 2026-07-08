@@ -4,8 +4,8 @@ These examples show the different ways to obtain the credentials
 (**WebSocket URL** + **participant JWT**) the SDK needs to join a room. Each
 example builds its own executable, constructs a single kind of
 [`TokenSource`](https://github.com/livekit/client-sdk-cpp/blob/main/include/livekit/token_source.h),
-connects to a room, logs participant join/leave for a few seconds, then
-disconnects.
+connects to a room, logs participant join/leave activity, and stays online until
+you stop it with Ctrl-C.
 
 > Token sources are for the **initial connection only**. Once connected, the
 > LiveKit server refreshes the session token internally — your token source is
@@ -38,6 +38,7 @@ All inputs come from environment variables, so no secrets or sandbox IDs are com
 | `LIVEKIT_TOKEN_ENDPOINT` | endpoint, caching | Token endpoint URL. Default `http://127.0.0.1:3000/createToken`. |
 | `LIVEKIT_TOKEN_ENDPOINT_METHOD` | endpoint, caching | Optional HTTP method (default `POST`). |
 | `LIVEKIT_TOKEN_ENDPOINT_HEADERS` | endpoint, caching | Optional newline-separated `Name: Value` headers. |
+| `LIVEKIT_ROOM_NAME` | endpoint, sandbox, caching | Optional room name to request from the token server. Literal/custom examples use already-minted tokens, so their room is encoded in `LIVEKIT_TOKEN`. |
 | `LIVEKIT_SANDBOX_ID` | sandbox | Required. Sandbox ID from LiveKit Cloud. |
 | `LIVEKIT_AGENT_NAME` | sandbox | Optional agent to dispatch into the room. |
 | `LIVEKIT_AGENT_METADATA` | sandbox | Optional metadata for the dispatched agent. |
@@ -95,6 +96,9 @@ export LIVEKIT_SANDBOX_ID=token-server-xxxxxx
 
 The built binaries live under `build/token_source/`:
 
+Each example remains connected until you press Ctrl-C, then disconnects from the
+room before exiting.
+
 ```bash
 # Literal: bring your own URL + token
 export LIVEKIT_URL=ws://localhost:7880
@@ -105,6 +109,7 @@ export LIVEKIT_TOKEN=<participant-jwt>
 ```bash
 # Endpoint / caching: point at your token endpoint
 export LIVEKIT_TOKEN_ENDPOINT=http://127.0.0.1:3000/createToken
+export LIVEKIT_ROOM_NAME=my-room # optional
 ./build/token_source/token_source_endpoint
 ./build/token_source/token_source_caching
 ```
@@ -112,6 +117,7 @@ export LIVEKIT_TOKEN_ENDPOINT=http://127.0.0.1:3000/createToken
 ```bash
 # Sandbox: development-only, ID from the environment
 export LIVEKIT_SANDBOX_ID=<your-sandbox-id>
+export LIVEKIT_ROOM_NAME=my-room                 # optional
 export LIVEKIT_AGENT_NAME=<your-agent-name>         # optional
 export LIVEKIT_AGENT_METADATA=<your-agent-metadata> # optional
 ./build/token_source/token_source_sandbox

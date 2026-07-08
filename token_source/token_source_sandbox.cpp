@@ -22,6 +22,7 @@
 //
 // Environment:
 //   LIVEKIT_SANDBOX_ID      Sandbox identifier from LiveKit Cloud (required)
+//   LIVEKIT_ROOM_NAME       Optional room name to request
 //   LIVEKIT_AGENT_NAME      Optional registered agent to dispatch into the room
 //   LIVEKIT_AGENT_METADATA  Optional metadata passed to the dispatched agent
 
@@ -47,8 +48,7 @@ bool sandboxTokenSourceConnect() {
   // X-Sandbox-ID set from LIVEKIT_SANDBOX_ID.
   auto token_source = livekit::SandboxTokenSource::create(sandbox_id);
 
-  livekit::TokenRequestOptions request_options;
-  request_options.participant_identity = "robot-a";
+  auto request_options = tokenRequestOptionsFromEnv();
 
   // Optional agent dispatch: when LIVEKIT_AGENT_NAME is set, the request embeds
   // room_config.agents so the token server dispatches a named agent.

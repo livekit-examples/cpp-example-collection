@@ -26,6 +26,7 @@
 //   LIVEKIT_TOKEN_ENDPOINT_METHOD   Optional HTTP method (default POST)
 //   LIVEKIT_TOKEN_ENDPOINT_HEADERS  Optional newline-separated "Name: Value" headers,
 //                                   e.g. "Authorization: Bearer abc123"
+//   LIVEKIT_ROOM_NAME               Optional room name to request
 
 #include <livekit/livekit.h>
 #include <livekit/token_source.h>
@@ -53,8 +54,7 @@ bool endpointTokenSourceConnect() {
   auto token_source = livekit::EndpointTokenSource::create(endpoint_url, std::move(endpoint_options));
 
   // These options are sent to your endpoint, which embeds them into the JWT.
-  livekit::TokenRequestOptions request_options;
-  request_options.participant_identity = "robot-a";
+  auto request_options = tokenRequestOptionsFromEnv();
   const auto credentials = token_source->fetch(request_options).get();
   if (!credentials) {
     std::cerr << "Failed to fetch credentials: " << credentials.error().message << "\n";

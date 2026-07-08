@@ -26,6 +26,7 @@
 //                                   (default http://127.0.0.1:3000/createToken)
 //   LIVEKIT_TOKEN_ENDPOINT_METHOD   Optional HTTP method (default POST)
 //   LIVEKIT_TOKEN_ENDPOINT_HEADERS  Optional newline-separated "Name: Value" headers
+//   LIVEKIT_ROOM_NAME               Optional room name to request
 
 #include <livekit/livekit.h>
 #include <livekit/token_source.h>
@@ -53,8 +54,7 @@ bool cachingTokenSourceConnect() {
   auto inner = livekit::EndpointTokenSource::create(endpoint_url, endpointOptionsFromEnv());
   auto token_source = livekit::CachingTokenSource::create(std::move(inner));
 
-  livekit::TokenRequestOptions request_options;
-  request_options.participant_identity = "robot-a";
+  auto request_options = tokenRequestOptionsFromEnv();
   const auto credentials = token_source->fetch(request_options).get();
   if (!credentials) {
     std::cerr << "Failed to fetch credentials: " << credentials.error().message << "\n";

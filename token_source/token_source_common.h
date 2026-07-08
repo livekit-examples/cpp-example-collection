@@ -25,8 +25,10 @@
 
 #include <livekit/livekit.h>
 
+#include <atomic>
 #include <cctype>
 #include <chrono>
+#include <csignal>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
@@ -37,8 +39,22 @@ namespace token_source_example {
 
 using namespace std::chrono_literals;
 
-// How long to stay connected so participant join/leave events can be observed.
-constexpr auto kObserveDuration = 5s;
+// How frequently to check whether the user has requested shutdown.
+constexpr auto kSignalPollPeriod = 50ms;
+
+inline volatile std::sig_atomic_t g_running = 1;
+inline std::atomic<bool> g_room_disconnected{false};
+
+inline void handleSignal(int) { g_running = 0; }
+
+inline void installSignalHandlers() {
+  g_running = 1;
+  g_room_disconnected.store(false, std::memory_order_relaxed);
+  std::signal(SIGINT, handleSignal);
+#ifdef SIGTERM
+  std::signal(SIGTERM, handleSignal);
+#endif
+}
 
 /// Returns the value of an environment variable, or an empty string when unset.
 inline std::string getenvOrEmpty(const char* name) {
@@ -55,6 +71,21 @@ inline bool requireEnv(const char* name, std::string& out) {
     return false;
   }
   return true;
+}
+
+/// Builds the per-fetch request options common to configurable token sources.
+///
+/// LIVEKIT_ROOM_NAME - optional room name to request from the token server.
+inline livekit::TokenRequestOptions tokenRequestOptionsFromEnv() {
+  livekit::TokenRequestOptions options;
+  options.participant_identity = "robot-a";
+
+  if (const std::string room_name = getenvOrEmpty("LIVEKIT_ROOM_NAME"); !room_name.empty()) {
+    options.room_name = room_name;
+    std::cout << "Requesting room: " << room_name << "\n";
+  }
+
+  return options;
 }
 
 /// Trims leading and trailing ASCII whitespace.
@@ -78,7 +109,84 @@ inline std::string formatParticipant(const livekit::Participant& participant) {
   return "identity=" + participant.identity() + ", name=" + displayName(participant.name());
 }
 
-/// Minimal delegate that logs remote participant join/leave activity.
+inline const char* connectionStateName(livekit::ConnectionState state) {
+  switch (state) {
+    case livekit::ConnectionState::Disconnected:
+      return "Disconnected";
+    case livekit::ConnectionState::Connected:
+      return "Connected";
+    case livekit::ConnectionState::Reconnecting:
+      return "Reconnecting";
+  }
+  return "Unknown";
+}
+
+inline const char* connectionQualityName(livekit::ConnectionQuality quality) {
+  switch (quality) {
+    case livekit::ConnectionQuality::Poor:
+      return "Poor";
+    case livekit::ConnectionQuality::Good:
+      return "Good";
+    case livekit::ConnectionQuality::Excellent:
+      return "Excellent";
+    case livekit::ConnectionQuality::Lost:
+      return "Lost";
+  }
+  return "Unknown";
+}
+
+inline const char* disconnectReasonName(livekit::DisconnectReason reason) {
+  switch (reason) {
+    case livekit::DisconnectReason::Unknown:
+      return "Unknown";
+    case livekit::DisconnectReason::ClientInitiated:
+      return "ClientInitiated";
+    case livekit::DisconnectReason::DuplicateIdentity:
+      return "DuplicateIdentity";
+    case livekit::DisconnectReason::ServerShutdown:
+      return "ServerShutdown";
+    case livekit::DisconnectReason::ParticipantRemoved:
+      return "ParticipantRemoved";
+    case livekit::DisconnectReason::RoomDeleted:
+      return "RoomDeleted";
+    case livekit::DisconnectReason::StateMismatch:
+      return "StateMismatch";
+    case livekit::DisconnectReason::JoinFailure:
+      return "JoinFailure";
+    case livekit::DisconnectReason::Migration:
+      return "Migration";
+    case livekit::DisconnectReason::SignalClose:
+      return "SignalClose";
+    case livekit::DisconnectReason::RoomClosed:
+      return "RoomClosed";
+    case livekit::DisconnectReason::UserUnavailable:
+      return "UserUnavailable";
+    case livekit::DisconnectReason::UserRejected:
+      return "UserRejected";
+    case livekit::DisconnectReason::SipTrunkFailure:
+      return "SipTrunkFailure";
+    case livekit::DisconnectReason::ConnectionTimeout:
+      return "ConnectionTimeout";
+    case livekit::DisconnectReason::MediaFailure:
+      return "MediaFailure";
+  }
+  return "Unknown";
+}
+
+inline std::string formatRoomInfo(const livekit::RoomInfoData& info) {
+  std::string value = "name=" + displayName(info.name) + ", sid=" + (info.sid ? *info.sid : "<unset>") +
+                      ", participants=" + std::to_string(info.num_participants) +
+                      ", publishers=" + std::to_string(info.num_publishers);
+  if (!info.metadata.empty()) {
+    value += ", metadata=" + info.metadata;
+  }
+  if (info.active_recording) {
+    value += ", active_recording=true";
+  }
+  return value;
+}
+
+/// Minimal delegate that logs room lifecycle and participant activity.
 class ParticipantLogDelegate : public livekit::RoomDelegate {
 public:
   void onParticipantConnected(livekit::Room& /*room*/, const livekit::ParticipantConnectedEvent& event) override {
@@ -93,7 +201,63 @@ public:
     if (event.participant == nullptr) {
       return;
     }
-    std::cout << "Participant disconnected: identity=" << event.participant->identity() << "\n";
+    std::cout << "Participant disconnected: identity=" << event.participant->identity()
+              << ", reason=" << disconnectReasonName(event.reason) << "\n";
+  }
+
+  void onRoomMetadataChanged(livekit::Room& /*room*/, const livekit::RoomMetadataChangedEvent& event) override {
+    std::cout << "Room metadata changed: old=" << displayName(event.old_metadata)
+              << ", new=" << displayName(event.new_metadata) << "\n";
+  }
+
+  void onRoomSidChanged(livekit::Room& /*room*/, const livekit::RoomSidChangedEvent& event) override {
+    std::cout << "Room SID changed: " << displayName(event.sid) << "\n";
+  }
+
+  void onRoomUpdated(livekit::Room& /*room*/, const livekit::RoomUpdatedEvent& event) override {
+    std::cout << "Room updated: " << formatRoomInfo(event.info) << "\n";
+  }
+
+  void onRoomMoved(livekit::Room& /*room*/, const livekit::RoomMovedEvent& event) override {
+    std::cout << "Room moved: " << formatRoomInfo(event.info) << "\n";
+  }
+
+  void onConnectionQualityChanged(livekit::Room& /*room*/, const livekit::ConnectionQualityChangedEvent& event) override {
+    if (event.participant == nullptr) {
+      return;
+    }
+    std::cout << "Connection quality changed: " << formatParticipant(*event.participant)
+              << ", quality=" << connectionQualityName(event.quality) << "\n";
+  }
+
+  void onConnectionStateChanged(livekit::Room& /*room*/, const livekit::ConnectionStateChangedEvent& event) override {
+    std::cout << "Connection state changed: " << connectionStateName(event.state) << "\n";
+  }
+
+  void onDisconnected(livekit::Room& /*room*/, const livekit::DisconnectedEvent& event) override {
+    std::cout << "Room disconnected: reason=" << disconnectReasonName(event.reason) << "\n";
+    g_room_disconnected.store(true, std::memory_order_relaxed);
+  }
+
+  void onReconnecting(livekit::Room& /*room*/, const livekit::ReconnectingEvent& /*event*/) override {
+    std::cout << "Room reconnecting...\n";
+  }
+
+  void onReconnected(livekit::Room& /*room*/, const livekit::ReconnectedEvent& /*event*/) override {
+    std::cout << "Room reconnected\n";
+  }
+
+  void onTokenRefreshed(livekit::Room& /*room*/, const livekit::TokenRefreshedEvent& event) override {
+    std::cout << "Room token refreshed: token_bytes=" << event.token.size() << "\n";
+  }
+
+  void onRoomEos(livekit::Room& /*room*/, const livekit::RoomEosEvent& /*event*/) override {
+    std::cout << "Room reached end-of-stream\n";
+    g_room_disconnected.store(true, std::memory_order_relaxed);
+  }
+
+  void onParticipantsUpdated(livekit::Room& /*room*/, const livekit::ParticipantsUpdatedEvent& event) override {
+    std::cout << "Participants updated: count=" << event.participants.size() << "\n";
   }
 };
 
@@ -107,8 +271,8 @@ inline void logRemoteParticipants(const livekit::Room& room) {
   }
 }
 
-/// Logs local/remote participants, stays connected briefly so join/leave events
-/// surface, then disconnects gracefully. Returns false on any failure.
+/// Logs local/remote participants, stays connected until interrupted, then
+/// disconnects gracefully. Returns false on any failure.
 inline bool runConnectedSession(livekit::Room& room) {
   const auto local_participant = room.localParticipant().lock();
   if (!local_participant) {
@@ -119,9 +283,18 @@ inline bool runConnectedSession(livekit::Room& room) {
 
   logRemoteParticipants(room);
 
-  // Stay connected briefly so participant join/leave events are surfaced.
-  std::this_thread::sleep_for(kObserveDuration);
+  installSignalHandlers();
+  std::cout << "Waiting for participant activity. Press Ctrl-C to disconnect...\n";
+  while (g_running != 0 && !g_room_disconnected.load(std::memory_order_relaxed)) {
+    std::this_thread::sleep_for(kSignalPollPeriod);
+  }
+
   logRemoteParticipants(room);
+
+  if (g_room_disconnected.load(std::memory_order_relaxed)) {
+    std::cout << "Room already disconnected\n";
+    return true;
+  }
 
   if (!room.disconnect()) {
     std::cerr << "Failed to gracefully disconnect from room\n";
