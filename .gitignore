@@ -24,3 +24,6 @@ lib/
 *.dylib
 *.dll
 *.exe
+
+# Local SDK installs
+livekit-sdk-install/

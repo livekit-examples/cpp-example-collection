@@ -23,6 +23,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 set(LIVEKIT_SDK_VERSION "latest" CACHE STRING "LiveKit C++ SDK version (e.g. 1.3.0 or latest)")
 set(LIVEKIT_LOCAL_SDK_DIR "" CACHE PATH "Path to a local LiveKit SDK install prefix (skips download)")
+option(LIVEKIT_BUILD_SCHEMA_MCAP_EXAMPLE
+       "Build schema_mcap, which requires the client-sdk-cpp ladvoc/schema-metadata branch"
+       OFF)
 
 if(LIVEKIT_LOCAL_SDK_DIR)
   message(STATUS "Using local LiveKit SDK: ${LIVEKIT_LOCAL_SDK_DIR}")
@@ -94,3 +97,7 @@ add_subdirectory(platform_audio)
 add_subdirectory(ping_pong/ping ping_pong_ping)
 add_subdirectory(ping_pong/pong ping_pong_pong)
 add_subdirectory(frame_metadata)
+
+if(LIVEKIT_BUILD_SCHEMA_MCAP_EXAMPLE)
+  add_subdirectory(schema_mcap)
+endif()
