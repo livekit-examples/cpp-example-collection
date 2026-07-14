@@ -1,36 +1,50 @@
 # Schema MCAP Example
 
-This example demonstrates the schema-metadata flow from the
-`ladvoc/schema-metadata` branch of `livekit/client-sdk-cpp`:
+This example demonstrates LiveKit data-track schema metadata: a publisher can
+define a schema once, publish a data track that references it, and let
+subscribers retrieve the schema separately from the frame payloads. That split is
+useful for MCAP export because the recorder can write an MCAP `Schema` and
+`Channel` from LiveKit metadata before it writes any messages.
 
-- `schema_mcap_publisher` defines a JSON Schema, publishes a LiveKit data track
-  with that schema and `json` frame encoding, and sends synthetic telemetry JSON.
-- `schema_mcap_recorder` joins as a second participant, discovers the data
-  track, retrieves the publisher's schema definition, writes it into an MCAP
-  file, and records a fixed number of frames.
+The example publishes synthetic `foxglove.PointCloud` frames as JSON. The
+recorder joins as a second participant, discovers the advertised schema metadata,
+retrieves the JSON Schema from the publisher, and records the incoming frames to
+an MCAP file.
+
+```text
+schema metadata path:
+  publisher defineSchema("foxglove.PointCloud", jsonschema)
+      -> LiveKit SFU participant data blob
+      -> recorder getSchema(...)
+      -> MCAP Schema
+
+data track path:
+  publisher data track "pointcloud-json"
+      metadata: schema="foxglove.PointCloud", frame_encoding=json
+      frames: synthetic point cloud JSON
+      -> LiveKit SFU data track
+      -> recorder subscription
+      -> MCAP Channel + Messages
+```
 
 The recorder writes files named like:
 
 ```sh
-livekit_schema_mcap_20260708_183012.mcap
+livekit_pointcloud_20260708_183012.mcap
 ```
 
-## Why This Example Is Opt-In
+## Build
 
-The schema APIs are not part of the released SDK yet. Build this example against
-a local SDK install from the upstream `ladvoc/schema-metadata` branch:
+Configure and build from the repository root:
 
 ```sh
-cmake -S . -B build-schema-mcap \
-  -DLIVEKIT_LOCAL_SDK_DIR="$HOME/livekit-sdk-schema" \
-  -DLIVEKIT_BUILD_SCHEMA_MCAP_EXAMPLE=ON
-
-cmake --build build-schema-mcap --target schema_mcap_publisher schema_mcap_recorder
+cmake -S . -B build
+cmake --build build --target schema_mcap_publisher schema_mcap_recorder
 ```
 
-The MCAP dependency is local to this example. Enabling the example fetches the
-Foxglove MCAP C++ headers into the CMake build tree and does not add MCAP to the
-rest of the repository.
+The MCAP dependency is local to this example. CMake fetches the Foxglove MCAP
+C++ headers into the build tree and does not add MCAP to the rest of the
+repository.
 
 ## Local SFU
 
@@ -52,6 +66,7 @@ export LIVEKIT_PUBLISHER_TOKEN="$(
   lk token create \
     --api-key devkey \
     --api-secret secret \
+    --token-only \
     --join \
     --room schema-mcap \
     --identity schema-publisher
@@ -61,6 +76,7 @@ export LIVEKIT_RECORDER_TOKEN="$(
   lk token create \
     --api-key devkey \
     --api-secret secret \
+    --token-only \
     --join \
     --room schema-mcap \
     --identity schema-recorder
@@ -73,27 +89,189 @@ Start the recorder first so it is waiting when the publisher advertises the data
 track:
 
 ```sh
-./build-schema-mcap/schema_mcap/recorder/schema_mcap_recorder --output-dir ./mcap --frames 100
+./build/schema_mcap/recorder/schema_mcap_recorder --output-dir ./mcap
 ```
 
 In another terminal, start the publisher:
 
 ```sh
-./build-schema-mcap/schema_mcap/publisher/schema_mcap_publisher
+./build/schema_mcap/publisher/schema_mcap_publisher
 ```
 
-The recorder exits after `--frames` messages and closes the MCAP file. Each MCAP
-message uses:
+The publisher and recorder exit after 50 messages and the recorder closes the
+MCAP file. Use `--frames <count>` or `SCHEMA_MCAP_FRAME_COUNT` to override the
+recorder's frame count when experimenting with a modified publisher.
 
-- schema name: `livekit.example.Telemetry`
+## Inspect and Visualize
+
+If the [MCAP CLI](https://mcap.dev/guides/cli) is installed, validate the
+recording with:
+
+```sh
+mcap info ./mcap/livekit_pointcloud_*.mcap
+mcap doctor ./mcap/livekit_pointcloud_*.mcap
+```
+
+Open the MCAP file in the Foxglove desktop or web app and add a 3D panel. Enable
+the `/pointcloud` topic. To visualize synthetic intensity, set the point cloud's
+color mode to **Color map** and its color field to `intensity`.
+
+## Format
+
+Foxglove recognizes the point cloud because the schema name is exactly
+`foxglove.PointCloud`, the schema encoding is `jsonschema`, and the message
+encoding is `json`. The JSON envelope is human-readable; only its packed point
+buffer is base64-encoded.
+
+Each MCAP message uses:
+
+- schema name: `foxglove.PointCloud`
 - schema encoding: `jsonschema`
-- channel topic: `/livekit/telemetry`
+- channel topic: `/pointcloud`
 - message encoding: `json`
 
-## Notes
+Each cloud contains 512 animated points. The packed point layout is four
+little-endian `FLOAT32` values with a 16-byte stride:
 
-This example intentionally uses JSON Schema and JSON frames because that keeps
-the data human-readable while still exercising the schema-definition,
-schema-discovery, and MCAP schema/channel export path. The same shape should
-carry over to Protobuf, FlatBuffer, ROS message, or CDR payloads by changing the
-schema definition and the advertised `DataTrackFrameEncoding`.
+| Field | Offset |
+| --- | ---: |
+| `x` | 0 |
+| `y` | 4 |
+| `z` | 8 |
+| `intensity` | 12 |
+
+The packed bytes are base64-encoded in the JSON `data` property. The cloud uses
+the canonical Foxglove `{sec, nsec}` timestamp and identity pose. This keeps the
+example independent of ROS and Protobuf and adds no serialization dependency.
+
+The publisher defines this JSON Schema:
+
+```json
+{
+  "title": "foxglove.PointCloud",
+  "description": "A collection of N-dimensional points, which may contain additional fields with information like normals, intensity, etc.",
+  "$comment": "Generated by https://github.com/foxglove/foxglove-sdk",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "object",
+      "title": "time",
+      "properties": {
+        "sec": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nsec": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999999999
+        }
+      },
+      "description": "Timestamp of point cloud"
+    },
+    "frame_id": {
+      "type": "string",
+      "description": "Frame of reference"
+    },
+    "pose": {
+      "title": "foxglove.Pose",
+      "description": "The origin of the point cloud relative to the frame of reference",
+      "type": "object",
+      "properties": {
+        "position": {
+          "title": "foxglove.Vector3",
+          "description": "Point denoting position in 3D space",
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number",
+              "description": "x component"
+            },
+            "y": {
+              "type": "number",
+              "description": "y component"
+            },
+            "z": {
+              "type": "number",
+              "description": "z component"
+            }
+          },
+          "required": ["x", "y", "z"]
+        },
+        "orientation": {
+          "title": "foxglove.Quaternion",
+          "description": "Quaternion denoting orientation in 3D space",
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number",
+              "description": "x value"
+            },
+            "y": {
+              "type": "number",
+              "description": "y value"
+            },
+            "z": {
+              "type": "number",
+              "description": "z value"
+            },
+            "w": {
+              "type": "number",
+              "description": "w value"
+            }
+          },
+          "required": ["x", "y", "z", "w"]
+        }
+      },
+      "required": ["position", "orientation"]
+    },
+    "point_stride": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of bytes between points in the `data`"
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "title": "foxglove.PackedElementField",
+        "description": "A field present within each element in a byte array of packed elements.",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the field"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Byte offset from start of data buffer"
+          },
+          "type": {
+            "title": "foxglove.NumericType",
+            "description": "Type of data in the field. Integers are stored using little-endian byte order.",
+            "oneOf": [
+              {"title": "UNKNOWN", "const": 0, "description": "Unknown numeric type"},
+              {"title": "UINT8", "const": 1, "description": "Unsigned 8-bit integer"},
+              {"title": "INT8", "const": 2, "description": "Signed 8-bit integer"},
+              {"title": "UINT16", "const": 3, "description": "Unsigned 16-bit integer"},
+              {"title": "INT16", "const": 4, "description": "Signed 16-bit integer"},
+              {"title": "UINT32", "const": 5, "description": "Unsigned 32-bit integer"},
+              {"title": "INT32", "const": 6, "description": "Signed 32-bit integer"},
+              {"title": "FLOAT32", "const": 7, "description": "32-bit floating-point number"},
+              {"title": "FLOAT64", "const": 8, "description": "64-bit floating-point number"}
+            ]
+          }
+        },
+        "required": ["name", "offset", "type"]
+      },
+      "description": "Fields in `data`. At least 2 coordinate fields from `x`, `y`, and `z` are required for each point's position; `red`, `green`, `blue`, and `alpha` are optional for customizing each point's color."
+    },
+    "data": {
+      "type": "string",
+      "contentEncoding": "base64",
+      "description": "Point data, interpreted using `fields`"
+    }
+  },
+  "required": ["timestamp", "frame_id", "pose", "point_stride", "fields", "data"]
+}
+```

@@ -27,11 +27,9 @@ endforeach()
 
 if(NOT _schema_mcap_schema_header_found)
   message(FATAL_ERROR
-    "schema_mcap requires a LiveKit C++ SDK built from the ladvoc/schema-metadata branch.\n"
+    "schema_mcap requires a LiveKit C++ SDK with schema-metadata support.\n"
     "The configured SDK does not provide include/livekit/data_track_schema.h.\n"
-    "Install that branch and reconfigure with:\n"
-    "  cmake -S . -B build -DLIVEKIT_LOCAL_SDK_DIR=\"$HOME/livekit-sdk-schema\" "
-    "-DLIVEKIT_BUILD_SCHEMA_MCAP_EXAMPLE=ON"
+    "Install a schema-enabled SDK or select an SDK release that includes schema metadata."
   )
 endif()
 
@@ -45,6 +43,10 @@ FetchContent_MakeAvailable(foxglove_mcap)
 add_library(schema_mcap_mcap INTERFACE)
 target_include_directories(schema_mcap_mcap SYSTEM INTERFACE
   ${foxglove_mcap_SOURCE_DIR}/cpp/mcap/include
+)
+target_compile_definitions(schema_mcap_mcap INTERFACE
+  MCAP_COMPRESSION_NO_LZ4
+  MCAP_COMPRESSION_NO_ZSTD
 )
 
 add_subdirectory(publisher)

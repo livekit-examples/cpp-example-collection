@@ -16,11 +16,13 @@
 
 /// schema_mcap_recorder
 ///
-/// Waits for a schema-advertised LiveKit data track, retrieves the publisher's
-/// JSON Schema definition, and records received JSON frames to an MCAP file.
+/// Waits for a schema-advertised LiveKit point-cloud data track, retrieves the
+/// publisher's Foxglove JSON Schema, and records received frames to an MCAP
+/// file.
 ///
 /// Usage:
-///   schema_mcap_recorder [<ws-url> <token>] [--output-dir <dir>] [--frames <count>]
+///   schema_mcap_recorder [<ws-url> <token>] [--output-dir <dir>] [--frames
+///   <count>]
 ///
 /// Or via environment variables:
 ///   LIVEKIT_URL defaults to ws://localhost:7880
@@ -29,7 +31,8 @@
 ///   SCHEMA_MCAP_FRAME_COUNT defaults to 100
 
 #define MCAP_IMPLEMENTATION
-#include <mcap/writer.hpp>
+#include <livekit/data_track_stream.h>
+#include <livekit/remote_data_track.h>
 
 #include <chrono>
 #include <condition_variable>
@@ -37,6 +40,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <mcap/writer.hpp>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -65,7 +69,8 @@ void printUsage(const char* program) {
             << "\n"
             << "Environment:\n"
             << "  LIVEKIT_URL              defaults to " << schema_mcap::kDefaultLiveKitUrl << " when unset\n"
-            << "  LIVEKIT_RECORDER_TOKEN   required unless LIVEKIT_TOKEN or CLI token is provided\n"
+            << "  LIVEKIT_RECORDER_TOKEN   required unless LIVEKIT_TOKEN or "
+               "CLI token is provided\n"
             << "  LIVEKIT_TOKEN            fallback token variable\n"
             << "  SCHEMA_MCAP_OUTPUT_DIR   defaults to .\n"
             << "  SCHEMA_MCAP_FRAME_COUNT  defaults to " << schema_mcap::kDefaultRecorderFrameCount << "\n";
@@ -151,7 +156,7 @@ bool parseArgs(int argc, char* argv[], RecorderOptions& options, bool& requested
 }
 
 std::filesystem::path makeOutputPath(const std::filesystem::path& output_dir) {
-  return output_dir / ("livekit_schema_mcap_" + schema_mcap::localTimestampForFilename() + ".mcap");
+  return output_dir / ("livekit_pointcloud_" + schema_mcap::localTimestampForFilename() + ".mcap");
 }
 
 class RecorderDelegate : public RoomDelegate {
@@ -237,7 +242,8 @@ int main(int argc, char* argv[]) {
                 << room.roomInfo().name << "'\n";
       std::cout << "[recorder] waiting for data track '" << schema_mcap::kDataTrackName << "'\n";
 
-      auto remote_track = delegate.waitForTrack(std::chrono::duration_cast<std::chrono::milliseconds>(kTrackWaitTimeout));
+      auto remote_track =
+          delegate.waitForTrack(std::chrono::duration_cast<std::chrono::milliseconds>(kTrackWaitTimeout));
       if (!remote_track) {
         throw std::runtime_error("timed out waiting for schema data track");
       }
@@ -251,7 +257,8 @@ int main(int argc, char* argv[]) {
       }
 
       std::cout << "[recorder] discovered publisher='" << remote_track->publisherIdentity() << "' schema='"
-                << track_info.schema->name << "' schema_encoding=" << schema_mcap::schemaEncodingName(track_info.schema->encoding)
+                << track_info.schema->name
+                << "' schema_encoding=" << schema_mcap::schemaEncodingName(track_info.schema->encoding)
                 << " frame_encoding=" << schema_mcap::frameEncodingName(*track_info.frame_encoding) << "\n";
 
       const std::string schema_definition =
@@ -262,14 +269,16 @@ int main(int argc, char* argv[]) {
       const std::filesystem::path output_path = makeOutputPath(cli_options.output_dir);
 
       mcap::McapWriter writer;
-      throwIfMcapError(writer.open(output_path.string(), mcap::McapWriterOptions("")), "failed to open MCAP file");
+      mcap::McapWriterOptions writer_options("");
+      writer_options.compression = mcap::Compression::None;
+      throwIfMcapError(writer.open(output_path.string(), writer_options), "failed to open MCAP file");
 
-      mcap::Schema mcap_schema(
-          track_info.schema->name, schema_mcap::schemaEncodingName(track_info.schema->encoding), schema_definition);
+      mcap::Schema mcap_schema(track_info.schema->name, schema_mcap::schemaEncodingName(track_info.schema->encoding),
+                               schema_definition);
       writer.addSchema(mcap_schema);
 
-      mcap::Channel channel(schema_mcap::kMcapChannelTopic,
-                            schema_mcap::frameEncodingName(*track_info.frame_encoding), mcap_schema.id);
+      mcap::Channel channel(schema_mcap::kMcapChannelTopic, schema_mcap::frameEncodingName(*track_info.frame_encoding),
+                            mcap_schema.id);
       writer.addChannel(channel);
 
       auto subscribe_result = remote_track->subscribe();
@@ -299,7 +308,7 @@ int main(int argc, char* argv[]) {
 
         if (recorded % 10 == 0) {
           std::cout << "[recorder] frame=" << recorded << " bytes=" << frame.payload.size()
-                    << " payload=" << schema_mcap::toString(frame.payload) << "\n";
+                    << " timestamp_ns=" << message.logTime << "\n";
         }
         ++recorded;
       }
@@ -307,6 +316,10 @@ int main(int argc, char* argv[]) {
       subscription->close();
       writer.close();
       std::cout << "[recorder] wrote " << recorded << " frames to " << output_path << "\n";
+      if (recorded < cli_options.frame_count && schema_mcap::isRunning()) {
+        throw std::runtime_error("data track ended after " + std::to_string(recorded) + " of " +
+                                 std::to_string(cli_options.frame_count) + " requested frames");
+      }
     } catch (const std::exception& error) {
       std::cerr << "[recorder] error: " << error.what() << "\n";
       exit_code = 1;

@@ -20,7 +20,7 @@ etc.) without requiring users to build the SDK from source.
 | [`ping_pong/ping`](ping_pong/ping/) | Sends ping messages over a data track and records response latency. |
 | [`ping_pong/pong`](ping_pong/pong/) | Listens for ping messages and publishes matching pong responses. |
 | [`platform_audio`](platform_audio/) | Demonstrates microphone capture and speaker playout with platform audio devices. |
-| [`schema_mcap`](schema_mcap/) | Opt-in example that records schema-advertised data tracks to MCAP files. |
+| [`schema_mcap`](schema_mcap/) | Publishes synthetic Foxglove point clouds and records the schema-advertised JSON data track to MCAP. |
 | [`simple_data_stream`](simple_data_stream/) | Sends and receives text and byte streams over LiveKit data streams. |
 | [`simple_room`](simple_room/) | Connects to a room, publishes local media, and subscribes to remote media. |
 | [`simple_rpc`](simple_rpc/) | Demonstrates LiveKit RPC calls between participants. |
@@ -69,19 +69,6 @@ cmake --install <sdk-build-dir> --prefix "$HOME/livekit-sdk-install"
 
 # build the examples against the local SDK
 cmake -S . -B build -DLIVEKIT_LOCAL_SDK_DIR="$HOME/livekit-sdk-install"
-```
-
-### Experimental branch examples
-
-The [`schema_mcap`](schema_mcap/) example depends on the unreleased
-`ladvoc/schema-metadata` branch of `livekit/client-sdk-cpp`, so it is disabled
-by default. Build it against a local SDK install from that branch:
-
-```bash
-cmake -S . -B build-schema-mcap \
-  -DLIVEKIT_LOCAL_SDK_DIR="$HOME/livekit-sdk-schema" \
-  -DLIVEKIT_BUILD_SCHEMA_MCAP_EXAMPLE=ON
-cmake --build build-schema-mcap --target schema_mcap_publisher schema_mcap_recorder
 ```
 
 ### Building the examples
