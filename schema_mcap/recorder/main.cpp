@@ -16,9 +16,9 @@
 
 /// schema_mcap_recorder
 ///
-/// Waits for a schema-advertised LiveKit point-cloud data track, retrieves the
-/// publisher's Foxglove JSON Schema, and records received frames to an MCAP
-/// file.
+/// Waits for schema-advertised LiveKit point-cloud and transform data tracks,
+/// retrieves both Foxglove JSON Schemas, and records synchronized frames to one
+/// MCAP file.
 ///
 /// Usage:
 ///   schema_mcap_recorder [<ws-url> <token>] [--output-dir <dir>] [--frames
@@ -39,13 +39,16 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
 #include <mcap/writer.hpp>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "schema_mcap_common.h"
@@ -162,37 +165,62 @@ std::filesystem::path makeOutputPath(const std::filesystem::path& output_dir) {
 class RecorderDelegate : public RoomDelegate {
 public:
   void onDataTrackPublished(Room&, const DataTrackPublishedEvent& event) override {
-    if (!event.track || event.track->info().name != schema_mcap::kDataTrackName) {
+    if (!event.track) {
       return;
     }
 
     {
       std::lock_guard<std::mutex> lock(mutex_);
-      if (!track_) {
-        track_ = event.track;
+      if (event.track->info().name == schema_mcap::kDataTrackName && !pointcloud_track_) {
+        pointcloud_track_ = event.track;
+      } else if (event.track->info().name == schema_mcap::kTransformDataTrackName && !transform_track_) {
+        transform_track_ = event.track;
+      } else {
+        return;
       }
     }
     cv_.notify_all();
   }
 
-  std::shared_ptr<RemoteDataTrack> waitForTrack(std::chrono::milliseconds timeout) {
+  std::pair<std::shared_ptr<RemoteDataTrack>, std::shared_ptr<RemoteDataTrack>>
+  waitForTracks(std::chrono::milliseconds timeout) {
     std::unique_lock<std::mutex> lock(mutex_);
-    if (!cv_.wait_for(lock, timeout, [this] { return track_ != nullptr; })) {
-      return nullptr;
+    if (!cv_.wait_for(lock, timeout, [this] { return pointcloud_track_ != nullptr && transform_track_ != nullptr; })) {
+      return {};
     }
-    return track_;
+    return {pointcloud_track_, transform_track_};
   }
 
 private:
   std::mutex mutex_;
   std::condition_variable cv_;
-  std::shared_ptr<RemoteDataTrack> track_;
+  std::shared_ptr<RemoteDataTrack> pointcloud_track_;
+  std::shared_ptr<RemoteDataTrack> transform_track_;
 };
 
 void throwIfMcapError(const mcap::Status& status, const std::string& context) {
   if (!status.ok()) {
     throw std::runtime_error(context + ": " + status.message);
   }
+}
+
+std::string formatBitrate(double bits_per_second) {
+  std::ostringstream output;
+  output << std::fixed;
+  if (bits_per_second >= 1'000'000.0) {
+    output << std::setprecision(2) << bits_per_second / 1'000'000.0 << " Mbps";
+  } else if (bits_per_second >= 1'000.0) {
+    output << std::setprecision(1) << bits_per_second / 1'000.0 << " kbps";
+  } else {
+    output << std::setprecision(0) << bits_per_second << " bps";
+  }
+  return output.str();
+}
+
+std::string formatMilliseconds(double milliseconds) {
+  std::ostringstream output;
+  output << std::fixed << std::setprecision(2) << milliseconds << " ms";
+  return output.str();
 }
 
 } // namespace
@@ -240,30 +268,39 @@ int main(int argc, char* argv[]) {
 
       std::cout << "[recorder] connected as identity='" << local_participant->identity() << "' room='"
                 << room.roomInfo().name << "'\n";
-      std::cout << "[recorder] waiting for data track '" << schema_mcap::kDataTrackName << "'\n";
+      std::cout << "[recorder] waiting for data tracks '" << schema_mcap::kDataTrackName << "' and '"
+                << schema_mcap::kTransformDataTrackName << "'\n";
 
-      auto remote_track =
-          delegate.waitForTrack(std::chrono::duration_cast<std::chrono::milliseconds>(kTrackWaitTimeout));
-      if (!remote_track) {
-        throw std::runtime_error("timed out waiting for schema data track");
+      auto [pointcloud_track, transform_track] =
+          delegate.waitForTracks(std::chrono::duration_cast<std::chrono::milliseconds>(kTrackWaitTimeout));
+      if (!pointcloud_track || !transform_track) {
+        throw std::runtime_error("timed out waiting for schema data tracks");
       }
 
-      const auto& track_info = remote_track->info();
-      if (!track_info.schema) {
-        throw std::runtime_error("remote data track does not advertise a schema");
-      }
-      if (!track_info.frame_encoding) {
-        throw std::runtime_error("remote data track does not advertise a frame encoding");
-      }
+      const auto validate_track = [](const std::shared_ptr<RemoteDataTrack>& track) {
+        if (!track->info().schema) {
+          throw std::runtime_error("remote data track '" + track->info().name + "' does not advertise a schema");
+        }
+        if (!track->info().frame_encoding) {
+          throw std::runtime_error("remote data track '" + track->info().name +
+                                   "' does not advertise a frame encoding");
+        }
+      };
+      validate_track(pointcloud_track);
+      validate_track(transform_track);
 
-      std::cout << "[recorder] discovered publisher='" << remote_track->publisherIdentity() << "' schema='"
-                << track_info.schema->name
-                << "' schema_encoding=" << schema_mcap::schemaEncodingName(track_info.schema->encoding)
-                << " frame_encoding=" << schema_mcap::frameEncodingName(*track_info.frame_encoding) << "\n";
+      const auto& pointcloud_info = pointcloud_track->info();
+      const auto& transform_info = transform_track->info();
+      std::cout << "[recorder] discovered schemas '" << pointcloud_info.schema->name << "' and '"
+                << transform_info.schema->name << "' from publisher='" << pointcloud_track->publisherIdentity()
+                << "'\n";
 
-      const std::string schema_definition =
-          local_participant->getSchema(*track_info.schema, remote_track->publisherIdentity());
-      std::cout << "[recorder] retrieved schema definition bytes=" << schema_definition.size() << "\n";
+      const std::string pointcloud_schema_definition =
+          local_participant->getSchema(*pointcloud_info.schema, pointcloud_track->publisherIdentity());
+      const std::string transform_schema_definition =
+          local_participant->getSchema(*transform_info.schema, transform_track->publisherIdentity());
+      std::cout << "[recorder] retrieved schema definitions bytes=" << pointcloud_schema_definition.size() << "+"
+                << transform_schema_definition.size() << "\n";
 
       std::filesystem::create_directories(cli_options.output_dir);
       const std::filesystem::path output_path = makeOutputPath(cli_options.output_dir);
@@ -273,49 +310,159 @@ int main(int argc, char* argv[]) {
       writer_options.compression = mcap::Compression::None;
       throwIfMcapError(writer.open(output_path.string(), writer_options), "failed to open MCAP file");
 
-      mcap::Schema mcap_schema(track_info.schema->name, schema_mcap::schemaEncodingName(track_info.schema->encoding),
-                               schema_definition);
-      writer.addSchema(mcap_schema);
+      mcap::Schema pointcloud_schema(pointcloud_info.schema->name,
+                                     schema_mcap::schemaEncodingName(pointcloud_info.schema->encoding),
+                                     pointcloud_schema_definition);
+      writer.addSchema(pointcloud_schema);
+      mcap::Schema transform_schema(transform_info.schema->name,
+                                    schema_mcap::schemaEncodingName(transform_info.schema->encoding),
+                                    transform_schema_definition);
+      writer.addSchema(transform_schema);
 
-      mcap::Channel channel(schema_mcap::kMcapChannelTopic, schema_mcap::frameEncodingName(*track_info.frame_encoding),
-                            mcap_schema.id);
-      writer.addChannel(channel);
+      mcap::Channel pointcloud_channel(schema_mcap::kMcapChannelTopic,
+                                       schema_mcap::frameEncodingName(*pointcloud_info.frame_encoding),
+                                       pointcloud_schema.id);
+      writer.addChannel(pointcloud_channel);
+      mcap::Channel transform_channel(schema_mcap::kTransformMcapChannelTopic,
+                                      schema_mcap::frameEncodingName(*transform_info.frame_encoding),
+                                      transform_schema.id);
+      writer.addChannel(transform_channel);
 
-      auto subscribe_result = remote_track->subscribe();
-      if (!subscribe_result) {
-        throw std::runtime_error("failed to subscribe to data track: " +
-                                 schema_mcap::describeDataTrackError(subscribe_result.error()));
+      auto pointcloud_subscribe_result = pointcloud_track->subscribe();
+      if (!pointcloud_subscribe_result) {
+        throw std::runtime_error("failed to subscribe to point-cloud data track: " +
+                                 schema_mcap::describeDataTrackError(pointcloud_subscribe_result.error()));
       }
-      auto subscription = subscribe_result.value();
+      auto transform_subscribe_result = transform_track->subscribe();
+      if (!transform_subscribe_result) {
+        throw std::runtime_error("failed to subscribe to transform data track: " +
+                                 schema_mcap::describeDataTrackError(transform_subscribe_result.error()));
+      }
+      auto pointcloud_subscription = pointcloud_subscribe_result.value();
+      auto transform_subscription = transform_subscribe_result.value();
 
-      std::cout << "[recorder] writing " << cli_options.frame_count << " frames to " << output_path << "\n";
+      std::cout << "[recorder] writing " << cli_options.frame_count << " synchronized frame pairs to " << output_path
+                << "\n";
       int recorded = 0;
+      std::uint64_t total_payload_bytes = 0;
+      std::uint64_t report_payload_bytes = 0;
+      std::optional<std::chrono::steady_clock::time_point> first_received_at;
+      std::optional<std::chrono::steady_clock::time_point> last_received_at;
+      std::optional<std::chrono::steady_clock::time_point> report_started_at;
+      std::size_t latency_sample_count = 0;
+      double latency_sum_ms = 0.0;
+      std::optional<double> minimum_latency_ms;
+      std::optional<double> maximum_latency_ms;
+
       while (recorded < cli_options.frame_count && schema_mcap::isRunning()) {
-        DataTrackFrame frame;
-        if (!subscription->read(frame)) {
+        DataTrackFrame transform_frame;
+        DataTrackFrame pointcloud_frame;
+        if (!transform_subscription->read(transform_frame) || !pointcloud_subscription->read(pointcloud_frame)) {
           break;
         }
 
-        mcap::Message message;
-        message.channelId = channel.id;
-        message.sequence = static_cast<std::uint32_t>(recorded + 1);
-        message.logTime = frame.user_timestamp ? (*frame.user_timestamp * 1000U) : schema_mcap::nowEpochNs();
-        message.publishTime = message.logTime;
-        message.data = reinterpret_cast<const std::byte*>(frame.payload.data());
-        message.dataSize = frame.payload.size();
+        const auto received_at = std::chrono::steady_clock::now();
+        const std::uint64_t received_epoch_us = schema_mcap::nowEpochUs();
+        const std::uint64_t payload_bytes = pointcloud_frame.payload.size() + transform_frame.payload.size();
+        total_payload_bytes += payload_bytes;
 
-        throwIfMcapError(writer.write(message), "failed to write MCAP message");
+        if (!first_received_at) {
+          first_received_at = received_at;
+          report_started_at = received_at;
+        } else {
+          report_payload_bytes += payload_bytes;
+        }
+        last_received_at = received_at;
+
+        std::optional<double> latency_ms;
+        if (pointcloud_frame.user_timestamp) {
+          const auto publisher_timestamp_us = *pointcloud_frame.user_timestamp;
+          const std::int64_t latency_us =
+              received_epoch_us >= publisher_timestamp_us
+                  ? static_cast<std::int64_t>(received_epoch_us - publisher_timestamp_us)
+                  : -static_cast<std::int64_t>(publisher_timestamp_us - received_epoch_us);
+          latency_ms = static_cast<double>(latency_us) / 1000.0;
+          latency_sum_ms += *latency_ms;
+          ++latency_sample_count;
+          if (!minimum_latency_ms || *latency_ms < *minimum_latency_ms) {
+            minimum_latency_ms = latency_ms;
+          }
+          if (!maximum_latency_ms || *latency_ms > *maximum_latency_ms) {
+            maximum_latency_ms = latency_ms;
+          }
+        }
+
+        const auto write_frame = [&](const DataTrackFrame& frame, const mcap::Channel& channel) {
+          mcap::Message message;
+          message.channelId = channel.id;
+          message.sequence = static_cast<std::uint32_t>(recorded + 1);
+          message.logTime = frame.user_timestamp ? (*frame.user_timestamp * 1000U) : schema_mcap::nowEpochNs();
+          message.publishTime = message.logTime;
+          message.data = reinterpret_cast<const std::byte*>(frame.payload.data());
+          message.dataSize = frame.payload.size();
+          throwIfMcapError(writer.write(message), "failed to write MCAP message");
+          return message.logTime;
+        };
+        write_frame(transform_frame, transform_channel);
+        write_frame(pointcloud_frame, pointcloud_channel);
 
         if (recorded % 10 == 0) {
-          std::cout << "[recorder] frame=" << recorded << " bytes=" << frame.payload.size()
-                    << " timestamp_ns=" << message.logTime << "\n";
+          std::cout << "[recorder] frame=" << recorded << " payload_bytes=" << payload_bytes
+                    << " (pointcloud=" << pointcloud_frame.payload.size()
+                    << ", transform=" << transform_frame.payload.size() << ")";
+          if (recorded > 0 && report_started_at) {
+            const double report_seconds = std::chrono::duration<double>(received_at - *report_started_at).count();
+            if (report_seconds > 0.0) {
+              std::cout << " bitrate="
+                        << formatBitrate((static_cast<double>(report_payload_bytes) * 8.0) / report_seconds);
+            }
+            report_payload_bytes = 0;
+            report_started_at = received_at;
+          } else {
+            std::cout << " bitrate=n/a";
+          }
+          std::cout << " latency=" << (latency_ms ? formatMilliseconds(*latency_ms) : "n/a") << "\n";
         }
         ++recorded;
       }
 
-      subscription->close();
+      pointcloud_subscription->close();
+      transform_subscription->close();
       writer.close();
-      std::cout << "[recorder] wrote " << recorded << " frames to " << output_path << "\n";
+      std::cout << "[recorder] wrote " << recorded << " synchronized frame pairs to " << output_path << "\n";
+
+      std::string session_duration = "n/a";
+      std::string average_bitrate = "n/a";
+      if (first_received_at && last_received_at && *last_received_at > *first_received_at) {
+        const double session_seconds =
+            std::chrono::duration<double>(*last_received_at - *first_received_at).count();
+        std::ostringstream duration;
+        duration << std::fixed << std::setprecision(2) << session_seconds << " s";
+        session_duration = duration.str();
+        average_bitrate = formatBitrate((static_cast<double>(total_payload_bytes) * 8.0) / session_seconds);
+      }
+
+      std::string average_latency = "n/a";
+      std::string minimum_latency = "n/a";
+      std::string maximum_latency = "n/a";
+      if (latency_sample_count > 0) {
+        average_latency = formatMilliseconds(latency_sum_ms / static_cast<double>(latency_sample_count));
+        minimum_latency = formatMilliseconds(*minimum_latency_ms);
+        maximum_latency = formatMilliseconds(*maximum_latency_ms);
+      }
+
+      const auto print_session_stat = [](const char* label, const std::string& value) {
+        std::cout << "  " << std::left << std::setw(24) << label << value << "\n";
+      };
+      std::cout << "[recorder] session statistics\n";
+      print_session_stat("Frames", std::to_string(recorded));
+      print_session_stat("Duration", session_duration);
+      print_session_stat("Payload bytes", std::to_string(total_payload_bytes));
+      print_session_stat("Average bitrate", average_bitrate);
+      print_session_stat("Average latency", average_latency);
+      print_session_stat("Minimum latency", minimum_latency);
+      print_session_stat("Maximum latency", maximum_latency);
+
       if (recorded < cli_options.frame_count && schema_mcap::isRunning()) {
         throw std::runtime_error("data track ended after " + std::to_string(recorded) + " of " +
                                  std::to_string(cli_options.frame_count) + " requested frames");

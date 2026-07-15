@@ -1,30 +1,56 @@
 # Schema MCAP Example
 
-This example demonstrates LiveKit data-track schema metadata: a publisher can
-define a schema once, publish a data track that references it, and let
-subscribers retrieve the schema separately from the frame payloads. That split is
-useful for MCAP export because the recorder can write an MCAP `Schema` and
-`Channel` from LiveKit metadata before it writes any messages.
+This example demonstrates LiveKit data-track schema metadata with a
+Foxglove-native point cloud recording flow. One participant streams lidar data
+and synchronized frame transforms over two schema-advertised data tracks. A
+second participant retrieves both JSON Schemas from LiveKit and writes both
+channels into one MCAP file that Foxglove can open directly.
 
-The example publishes synthetic `foxglove.PointCloud` frames as JSON. The
-recorder joins as a second participant, discovers the advertised schema metadata,
-retrieves the JSON Schema from the publisher, and records the incoming frames to
-an MCAP file.
+The key split is that the schemas travel as participant metadata while point
+cloud and transform frames travel over data tracks. That lets the recorder write
+the MCAP `Schema` and `Channel` records from LiveKit metadata before it writes
+any messages.
+
+The example publishes the included PandaSet autonomous-driving lidar sequence
+as `foxglove.PointCloud` JSON frames, paired with synchronized
+`foxglove.FrameTransform` messages. The recorder joins as a second participant,
+discovers the advertised schema metadata, retrieves both JSON Schemas from the
+publisher, and records the incoming frames to an MCAP file.
 
 ```text
-schema metadata path:
-  publisher defineSchema("foxglove.PointCloud", jsonschema)
-      -> LiveKit SFU participant data blob
-      -> recorder getSchema(...)
-      -> MCAP Schema
-
-data track path:
-  publisher data track "pointcloud-json"
-      metadata: schema="foxglove.PointCloud", frame_encoding=json
-      frames: synthetic point cloud JSON
-      -> LiveKit SFU data track
-      -> recorder subscription
-      -> MCAP Channel + Messages
++---------------------------- Publisher -----------------------------+
+|                                                                    |
+|  defineSchema                         publishDataTrack              |
+|  +--------------------------+         +--------------------------+  |
+|  | foxglove.PointCloud      |         | pointcloud-json          |  |
+|  | foxglove.FrameTransform  |         | frame-transform-json     |  |
+|  +------------+-------------+         +------------+-------------+  |
+|               |                                    |                |
++---------------|------------------------------------|----------------+
+                | schema metadata                    | JSON frames
+                v                                    v
++--------------------------- LiveKit SFU -----------------------------+
+|                                                                    |
+|  Participant data blob                  Data tracks                 |
+|  +--------------------------+           +------------------------+  |
+|  | JSON Schema definitions  |           | lidar-local clouds     |  |
+|  | and track schema IDs     |           | map -> lidar transforms|  |
+|  +------------+-------------+           +-----------+------------+  |
+|               |                                     |               |
++---------------|-------------------------------------|---------------+
+                | getSchema(...)                      | subscriptions
+                +------------------+------------------+
+                                   v
++----------------------------- Recorder ------------------------------+
+|                                                                    |
+|  MCAP Schema records: foxglove.PointCloud, foxglove.FrameTransform |
+|  MCAP Channels:       /pointcloud, /tf                              |
+|  MCAP Messages:       synchronized cloud and transform frames       |
+|                                                                    |
++----------------------------------+---------------------------------+
+                                   |
+                                   v
+                     livekit_pointcloud_<date>.mcap
 ```
 
 The recorder writes files named like:
@@ -85,8 +111,32 @@ export LIVEKIT_RECORDER_TOKEN="$(
 
 ## Run
 
-Start the recorder first so it is waiting when the publisher advertises the data
-track:
+The easiest local loop is the runner script. It builds both targets, generates
+token-only JWTs with the `lk` CLI, starts the recorder, then starts the
+publisher:
+
+```sh
+./schema_mcap/run_local.sh
+```
+
+The runner uses the bundled PandaSet sample automatically. It contains all 80
+consecutive 10 Hz scans from scene 001, covering eight seconds. The publisher
+plays one complete pass and does not loop. Each scan is a real sensor frame,
+not a static cloud transformed to emulate movement. Use
+`--pointcloud-sequence <dir>` to replay another sequence in the same compact
+fixture format.
+
+The script uses these defaults:
+
+- LiveKit URL: `ws://localhost:7880`
+- API key / secret: `devkey` / `secret`
+- room: `schema-mcap`
+- input: `schema_mcap/data/pandaset_sample`
+- frames: the complete 80-frame sequence
+- output directory: `./mcap`
+
+For debugging, you can still run the two binaries manually. Start the recorder
+first so it is waiting when the publisher advertises the data track:
 
 ```sh
 ./build/schema_mcap/recorder/schema_mcap_recorder --output-dir ./mcap
@@ -95,12 +145,22 @@ track:
 In another terminal, start the publisher:
 
 ```sh
-./build/schema_mcap/publisher/schema_mcap_publisher
+./build/schema_mcap/publisher/schema_mcap_publisher \
+  --pointcloud-sequence schema_mcap/data/pandaset_sample
 ```
 
-The publisher and recorder exit after 50 messages and the recorder closes the
-MCAP file. Use `--frames <count>` or `SCHEMA_MCAP_FRAME_COUNT` to override the
-recorder's frame count when experimenting with a modified publisher.
+The publisher defaults to the sequence's frame count. Use `--frames <count>` or
+`SCHEMA_MCAP_FRAME_COUNT` to request a shorter recording; requests longer than
+the sequence are capped to one complete pass.
+
+The recorder emits one combined progress line every ten frame pairs with the
+point-cloud and transform payload sizes, recent application-payload bitrate,
+and observed publisher-to-recorder latency. At shutdown it prints frame count,
+duration, total payload bytes, average payload bitrate, and average/minimum/
+maximum latency for the full session. These console statistics are not written
+to the MCAP file. Bitrate excludes LiveKit transport overhead, and latency uses
+the publisher's wall-clock timestamp, so the two hosts should have synchronized
+clocks when they are not the same machine.
 
 ## Inspect and Visualize
 
@@ -113,25 +173,68 @@ mcap doctor ./mcap/livekit_pointcloud_*.mcap
 ```
 
 Open the MCAP file in the Foxglove desktop or web app and add a 3D panel. Enable
-the `/pointcloud` topic. To visualize synthetic intensity, set the point cloud's
-color mode to **Color map** and its color field to `intensity`.
+the `/pointcloud` topic. Set the point cloud's color mode to **Color map** and
+its color field to `intensity`. The same MCAP contains `/tf` transforms:
+
+- use `map` as the display frame for a world-fixed view;
+- use `lidar` as the follow frame for a vehicle-following view.
+
+## PandaSet Sample and License
+
+The included animated sample is derived from all frames 00–79 of
+[PandaSet](https://pandaset.org/) scene 001, using the mechanical 360-degree
+lidar. PandaSet is provided under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and the
+[PandaSet Dataset Terms of Use](http://scalesd.org/pandaset-terms-of-use.html).
+See [`data/pandaset_sample/NOTICE.md`](data/pandaset_sample/NOTICE.md) for
+attribution, modifications, pinned source hashes, and the required citation.
+The source dataset terms are preserved beside the fixture in
+[`PANDASET_TERMS.txt`](data/pandaset_sample/PANDASET_TERMS.txt).
+
+The fixture is checked in as compact runtime data; pandas is not required to
+build or run this example. To regenerate it from an official PandaSet scene
+download, install pandas and run:
+
+```sh
+python3 -m pip install pandas
+python3 schema_mcap/tools/convert_pandaset_sample.py \
+  /path/to/pandaset/001 \
+  schema_mcap/data/pandaset_sample \
+  --scene-id 001 \
+  --frame-count 80 \
+  --max-points 8192 \
+  --source-repository https://huggingface.co/datasets/autoexpert-cvpr2026-workshop/seq \
+  --source-revision 7af0c275d38291e4cbfe9481439c93bc48e01f3d
+```
 
 ## Format
 
-Foxglove recognizes the point cloud because the schema name is exactly
-`foxglove.PointCloud`, the schema encoding is `jsonschema`, and the message
-encoding is `json`. The JSON envelope is human-readable; only its packed point
-buffer is base64-encoded.
+Foxglove recognizes both channels because their schema names are exactly
+`foxglove.PointCloud` and `foxglove.FrameTransform`, their schema encoding is
+`jsonschema`, and their message encoding is `json`. The JSON envelopes are
+human-readable; only the packed point buffer is base64-encoded.
 
-Each MCAP message uses:
+Each point-cloud message uses:
 
 - schema name: `foxglove.PointCloud`
 - schema encoding: `jsonschema`
 - channel topic: `/pointcloud`
 - message encoding: `json`
 
-Each cloud contains 512 animated points. The packed point layout is four
-little-endian `FLOAT32` values with a 16-byte stride:
+Each synchronized transform uses:
+
+- schema name: `foxglove.FrameTransform`
+- schema encoding: `jsonschema`
+- channel topic: `/tf`
+- message encoding: `json`
+- parent/child frames: `map` → `lidar`
+
+Each PandaSet cloud contains 8192 sampled points from a real lidar scan, encoded
+as `x`, `y`, `z`, and normalized reflectivity. The converter applies PandaSet's
+official inverse lidar-pose transform so points are in the lidar-local frame.
+Every point cloud therefore uses `frame_id: "lidar"` while the synchronized
+`/tf` message preserves its original world pose. The packed point layout is
+four little-endian `FLOAT32` values with a 16-byte stride:
 
 | Field | Offset |
 | --- | ---: |
@@ -144,7 +247,8 @@ The packed bytes are base64-encoded in the JSON `data` property. The cloud uses
 the canonical Foxglove `{sec, nsec}` timestamp and identity pose. This keeps the
 example independent of ROS and Protobuf and adds no serialization dependency.
 
-The publisher defines this JSON Schema:
+The publisher defines the point-cloud JSON Schema below and the canonical
+[Foxglove FrameTransform JSON Schema](https://github.com/foxglove/foxglove-sdk/blob/main/schemas/jsonschema/FrameTransform.json):
 
 ```json
 {
