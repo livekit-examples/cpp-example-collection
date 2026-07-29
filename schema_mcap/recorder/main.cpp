@@ -28,7 +28,7 @@
 ///   LIVEKIT_URL defaults to ws://localhost:7880
 ///   LIVEKIT_RECORDER_TOKEN or LIVEKIT_TOKEN is required
 ///   SCHEMA_MCAP_OUTPUT_DIR defaults to .
-///   SCHEMA_MCAP_FRAME_COUNT defaults to 100
+///   SCHEMA_MCAP_FRAME_COUNT defaults to 80
 
 #define MCAP_IMPLEMENTATION
 #include <livekit/data_track_stream.h>
@@ -182,8 +182,8 @@ public:
     cv_.notify_all();
   }
 
-  std::pair<std::shared_ptr<RemoteDataTrack>, std::shared_ptr<RemoteDataTrack>>
-  waitForTracks(std::chrono::milliseconds timeout) {
+  std::pair<std::shared_ptr<RemoteDataTrack>, std::shared_ptr<RemoteDataTrack>> waitForTracks(
+      std::chrono::milliseconds timeout) {
     std::unique_lock<std::mutex> lock(mutex_);
     if (!cv_.wait_for(lock, timeout, [this] { return pointcloud_track_ != nullptr && transform_track_ != nullptr; })) {
       return {};
@@ -223,6 +223,33 @@ std::string formatMilliseconds(double milliseconds) {
   return output.str();
 }
 
+void validateTrackMetadata(const std::shared_ptr<RemoteDataTrack>& track, const DataTrackSchemaId& expected_schema) {
+  const auto& info = track->info();
+  if (!info.schema) {
+    throw std::runtime_error("remote data track '" + info.name + "' does not advertise a schema");
+  }
+  if (*info.schema != expected_schema) {
+    throw std::runtime_error("remote data track '" + info.name + "' advertises unexpected schema '" +
+                             info.schema->name + "'");
+  }
+  if (!info.frame_encoding) {
+    throw std::runtime_error("remote data track '" + info.name + "' does not advertise a frame encoding");
+  }
+  if (*info.frame_encoding != DataTrackFrameEncoding::Json) {
+    throw std::runtime_error("remote data track '" + info.name + "' is not JSON encoded");
+  }
+}
+
+std::string getRequiredSchema(const std::shared_ptr<LocalParticipant>& local_participant,
+                              const DataTrackSchemaId& schema_id, const std::string& publisher_identity) {
+  auto definition = local_participant->getSchema(schema_id, publisher_identity);
+  if (!definition) {
+    throw std::runtime_error("failed to retrieve schema '" + schema_id.name + "' from publisher '" +
+                             publisher_identity + "'");
+  }
+  return std::move(*definition);
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -256,9 +283,7 @@ int main(int argc, char* argv[]) {
     try {
       std::cout << "[recorder] connecting to " << cli_options.url << "\n";
       if (!room.connect(cli_options.url, cli_options.token, room_options)) {
-        std::cerr << "[recorder] failed to connect\n";
-        livekit::shutdown();
-        return 1;
+        throw std::runtime_error("failed to connect");
       }
 
       auto local_participant = room.localParticipant().lock();
@@ -277,17 +302,11 @@ int main(int argc, char* argv[]) {
         throw std::runtime_error("timed out waiting for schema data tracks");
       }
 
-      const auto validate_track = [](const std::shared_ptr<RemoteDataTrack>& track) {
-        if (!track->info().schema) {
-          throw std::runtime_error("remote data track '" + track->info().name + "' does not advertise a schema");
-        }
-        if (!track->info().frame_encoding) {
-          throw std::runtime_error("remote data track '" + track->info().name +
-                                   "' does not advertise a frame encoding");
-        }
-      };
-      validate_track(pointcloud_track);
-      validate_track(transform_track);
+      if (pointcloud_track->publisherIdentity() != transform_track->publisherIdentity()) {
+        throw std::runtime_error("point-cloud and transform data tracks have different publishers");
+      }
+      validateTrackMetadata(pointcloud_track, schema_mcap::pointCloudSchemaId());
+      validateTrackMetadata(transform_track, schema_mcap::frameTransformSchemaId());
 
       const auto& pointcloud_info = pointcloud_track->info();
       const auto& transform_info = transform_track->info();
@@ -296,9 +315,9 @@ int main(int argc, char* argv[]) {
                 << "'\n";
 
       const std::string pointcloud_schema_definition =
-          local_participant->getSchema(*pointcloud_info.schema, pointcloud_track->publisherIdentity());
+          getRequiredSchema(local_participant, *pointcloud_info.schema, pointcloud_track->publisherIdentity());
       const std::string transform_schema_definition =
-          local_participant->getSchema(*transform_info.schema, transform_track->publisherIdentity());
+          getRequiredSchema(local_participant, *transform_info.schema, transform_track->publisherIdentity());
       std::cout << "[recorder] retrieved schema definitions bytes=" << pointcloud_schema_definition.size() << "+"
                 << transform_schema_definition.size() << "\n";
 
@@ -360,6 +379,9 @@ int main(int argc, char* argv[]) {
         if (!transform_subscription->read(transform_frame) || !pointcloud_subscription->read(pointcloud_frame)) {
           break;
         }
+        if (transform_frame.user_timestamp != pointcloud_frame.user_timestamp) {
+          throw std::runtime_error("received unsynchronized point-cloud and transform frames");
+        }
 
         const auto received_at = std::chrono::steady_clock::now();
         const std::uint64_t received_epoch_us = schema_mcap::nowEpochUs();
@@ -377,10 +399,9 @@ int main(int argc, char* argv[]) {
         std::optional<double> latency_ms;
         if (pointcloud_frame.user_timestamp) {
           const auto publisher_timestamp_us = *pointcloud_frame.user_timestamp;
-          const std::int64_t latency_us =
-              received_epoch_us >= publisher_timestamp_us
-                  ? static_cast<std::int64_t>(received_epoch_us - publisher_timestamp_us)
-                  : -static_cast<std::int64_t>(publisher_timestamp_us - received_epoch_us);
+          const std::int64_t latency_us = received_epoch_us >= publisher_timestamp_us
+                                              ? static_cast<std::int64_t>(received_epoch_us - publisher_timestamp_us)
+                                              : -static_cast<std::int64_t>(publisher_timestamp_us - received_epoch_us);
           latency_ms = static_cast<double>(latency_us) / 1000.0;
           latency_sum_ms += *latency_ms;
           ++latency_sample_count;
@@ -434,8 +455,7 @@ int main(int argc, char* argv[]) {
       std::string session_duration = "n/a";
       std::string average_bitrate = "n/a";
       if (first_received_at && last_received_at && *last_received_at > *first_received_at) {
-        const double session_seconds =
-            std::chrono::duration<double>(*last_received_at - *first_received_at).count();
+        const double session_seconds = std::chrono::duration<double>(*last_received_at - *first_received_at).count();
         std::ostringstream duration;
         duration << std::fixed << std::setprecision(2) << session_seconds << " s";
         session_duration = duration.str();

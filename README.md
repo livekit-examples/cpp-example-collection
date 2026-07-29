@@ -50,14 +50,14 @@ cmake -S . -B build
 Use a specific version:
 
 ```bash
-cmake -S . -B build -DLIVEKIT_SDK_VERSION=1.3.0
+cmake -S . -B build -DLIVEKIT_SDK_VERSION=1.5.0
 ```
 
 Reconfigure to change versions:
 
 ```bash
 rm -rf build
-cmake -S . -B build -DLIVEKIT_SDK_VERSION=1.3.0
+cmake -S . -B build -DLIVEKIT_SDK_VERSION=1.5.0
 ```
 
 Build against a local SDK:

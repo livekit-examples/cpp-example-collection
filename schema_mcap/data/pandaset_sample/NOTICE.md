@@ -11,6 +11,13 @@ The terms distributed with the source data are preserved in
 `PANDASET_TERMS.txt`. This sample remains subject to those terms and is not
 endorsed by or affiliated with Scale AI or Hesai.
 
+CC BY 4.0 permits copying, modification, redistribution, and commercial use
+provided its attribution and change-notice conditions are met. The additional
+PandaSet terms prohibit using the data to identify people and prohibit implying
+endorsement or affiliation. They also include indemnification, California
+choice-of-law, and other contractual provisions; review `PANDASET_TERMS.txt`
+before redistributing or using the fixture.
+
 The source frames were modified as follows:
 
 - selected the mechanical 360-degree lidar (`d == 0`);
@@ -28,6 +35,9 @@ The source frames are commit-pinned in the public
 [`autoexpert-cvpr2026-workshop/seq`](https://huggingface.co/datasets/autoexpert-cvpr2026-workshop/seq)
 repository at revision `7af0c275d38291e4cbfe9481439c93bc48e01f3d`.
 See `manifest.json` for each original filename, source pose, and SHA-256 hash.
+On 2026-07-29, all 80 source-frame hashes and the poses hash were verified
+against that pinned revision. Its `001/LICENSE.txt` contains the same PandaSet
+Dataset Terms preserved here.
 The sample can be regenerated from an official PandaSet scene download with:
 
 ```sh

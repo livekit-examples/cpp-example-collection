@@ -18,39 +18,28 @@ discovers the advertised schema metadata, retrieves both JSON Schemas from the
 publisher, and records the incoming frames to an MCAP file.
 
 ```text
-+---------------------------- Publisher -----------------------------+
-|                                                                    |
-|  defineSchema                         publishDataTrack              |
-|  +--------------------------+         +--------------------------+  |
-|  | foxglove.PointCloud      |         | pointcloud-json          |  |
-|  | foxglove.FrameTransform  |         | frame-transform-json     |  |
-|  +------------+-------------+         +------------+-------------+  |
-|               |                                    |                |
-+---------------|------------------------------------|----------------+
-                | schema metadata                    | JSON frames
-                v                                    v
-+--------------------------- LiveKit SFU -----------------------------+
-|                                                                    |
-|  Participant data blob                  Data tracks                 |
-|  +--------------------------+           +------------------------+  |
-|  | JSON Schema definitions  |           | lidar-local clouds     |  |
-|  | and track schema IDs     |           | map -> lidar transforms|  |
-|  +------------+-------------+           +-----------+------------+  |
-|               |                                     |               |
-+---------------|-------------------------------------|---------------+
-                | getSchema(...)                      | subscriptions
-                +------------------+------------------+
-                                   v
-+----------------------------- Recorder ------------------------------+
-|                                                                    |
-|  MCAP Schema records: foxglove.PointCloud, foxglove.FrameTransform |
-|  MCAP Channels:       /pointcloud, /tf                              |
-|  MCAP Messages:       synchronized cloud and transform frames       |
-|                                                                    |
-+----------------------------------+---------------------------------+
-                                   |
-                                   v
-                     livekit_pointcloud_<date>.mcap
+┌────────────── Publisher ──────────────┐       ┌──────── LiveKit room ────────┐
+│                                      │       │                              │
+│ defineSchema(...)                    │──────►│ Participant data blob        │
+│  • foxglove.PointCloud               │       │  • JSON Schema definitions   │
+│  • foxglove.FrameTransform           │       │                              │
+│                                      │       │                              │
+│ publishDataTrack(...)                │──────►│ Data tracks                  │
+│  • pointcloud-json                   │       │  • schema + encoding IDs     │
+│  • frame-transform-json              │       │  • synchronized JSON frames │
+└──────────────────────────────────────┘       └──────────────┬───────────────┘
+                                                            │
+                              ┌─────────────────────────────┘
+                              ▼
+┌─────────────── Recorder ──────────────┐
+│ getSchema(...) + subscribe() / read() │
+│                                      │
+│ MCAP schemas   PointCloud, Transform │
+│ MCAP channels  /pointcloud, /tf      │
+│ MCAP messages  synchronized frames   │
+└───────────────────┬──────────────────┘
+                    ▼
+      livekit_pointcloud_<date>.mcap
 ```
 
 The recorder writes files named like:
@@ -64,9 +53,11 @@ livekit_pointcloud_20260708_183012.mcap
 Configure and build from the repository root:
 
 ```sh
-cmake -S . -B build
+cmake -S . -B build -DLIVEKIT_SDK_VERSION=1.5.0
 cmake --build build --target schema_mcap_publisher schema_mcap_recorder
 ```
+
+This example requires LiveKit C++ SDK v1.5.0 or newer.
 
 The MCAP dependency is local to this example. CMake fetches the Foxglove MCAP
 C++ headers into the build tree and does not add MCAP to the rest of the
@@ -74,11 +65,10 @@ repository.
 
 ## Local SFU
 
-Run a local LiveKit server version that includes the data-track schema support.
-The SFU must have both data tracks and participant data blobs enabled:
+Schema definitions require LiveKit Server v1.13.3 or newer. Data tracks are
+enabled by default in current servers; participant data blobs must be enabled:
 
 ```yaml
-enable_data_tracks: true
 enable_participant_data_blob: true
 ```
 
@@ -190,6 +180,12 @@ See [`data/pandaset_sample/NOTICE.md`](data/pandaset_sample/NOTICE.md) for
 attribution, modifications, pinned source hashes, and the required citation.
 The source dataset terms are preserved beside the fixture in
 [`PANDASET_TERMS.txt`](data/pandaset_sample/PANDASET_TERMS.txt).
+
+The license permits copying, modification, redistribution, and commercial use
+with attribution. The additional dataset terms still apply: do not use the data
+to identify people, do not imply endorsement by Scale AI or Hesai, and preserve
+the license and attribution when redistributing the fixture. This is a data
+license separate from the Apache-2.0 license on the example source code.
 
 The fixture is checked in as compact runtime data; pandas is not required to
 build or run this example. To regenerate it from an official PandaSet scene

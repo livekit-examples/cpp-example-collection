@@ -270,10 +270,9 @@ std::vector<Point> loadPointCloudFrame(const std::string& path) {
   std::vector<Point> points;
   points.reserve(bytes.size() / kPointStride);
   for (std::size_t offset = 0; offset < bytes.size(); offset += kPointStride) {
-    points.push_back(Point{readFloat32LittleEndian(bytes.data() + offset),
-                           readFloat32LittleEndian(bytes.data() + offset + 4U),
-                           readFloat32LittleEndian(bytes.data() + offset + 8U),
-                           readFloat32LittleEndian(bytes.data() + offset + 12U)});
+    points.push_back(Point{
+        readFloat32LittleEndian(bytes.data() + offset), readFloat32LittleEndian(bytes.data() + offset + 4U),
+        readFloat32LittleEndian(bytes.data() + offset + 8U), readFloat32LittleEndian(bytes.data() + offset + 12U)});
   }
   return points;
 }
@@ -349,8 +348,8 @@ std::string makePointCloudJson(const std::vector<std::uint8_t>& packed_points, s
   const std::uint64_t nanoseconds = (timestamp_us % 1'000'000U) * 1'000U;
   const std::string data = base64Encode(packed_points);
   std::ostringstream payload;
-  payload << "{\"timestamp\":{\"sec\":" << seconds << ",\"nsec\":" << nanoseconds
-          << "},\"frame_id\":\"" << frame_id << "\",\"pose\":{\"position\":{\"x\":0,\"y\":0,"
+  payload << "{\"timestamp\":{\"sec\":" << seconds << ",\"nsec\":" << nanoseconds << "},\"frame_id\":\"" << frame_id
+          << "\",\"pose\":{\"position\":{\"x\":0,\"y\":0,"
              "\"z\":0},"
              "\"orientation\":{\"x\":0,\"y\":0,\"z\":0,\"w\":1}},\"point_stride\":"
           << kPointStride
@@ -422,30 +421,30 @@ int main(int argc, char* argv[]) {
     room_options.auto_subscribe = true;
     room_options.dynacast = false;
 
-    std::cout << "[publisher] connecting to " << cli_options.url << "\n";
-    if (!room.connect(cli_options.url, cli_options.token, room_options)) {
-      std::cerr << "[publisher] failed to connect\n";
-      livekit::shutdown();
-      return 1;
-    }
-
-    auto local_participant = room.localParticipant().lock();
-    if (!local_participant) {
-      std::cerr << "[publisher] local participant unavailable\n";
-      livekit::shutdown();
-      return 1;
-    }
-
-    std::cout << "[publisher] connected as identity='" << local_participant->identity() << "' room='"
-              << room.roomInfo().name << "'\n";
-
     try {
+      std::cout << "[publisher] connecting to " << cli_options.url << "\n";
+      if (!room.connect(cli_options.url, cli_options.token, room_options)) {
+        throw std::runtime_error("failed to connect");
+      }
+
+      auto local_participant = room.localParticipant().lock();
+      if (!local_participant) {
+        throw std::runtime_error("local participant unavailable");
+      }
+
+      std::cout << "[publisher] connected as identity='" << local_participant->identity() << "' room='"
+                << room.roomInfo().name << "'\n";
+
       const auto pointcloud_schema_id = schema_mcap::pointCloudSchemaId();
       const auto transform_schema_id = schema_mcap::frameTransformSchemaId();
-      local_participant->defineSchema(pointcloud_schema_id, schema_mcap::kPointCloudJsonSchema);
-      local_participant->defineSchema(transform_schema_id, schema_mcap::kFrameTransformJsonSchema);
-      std::cout << "[publisher] defined schemas '" << pointcloud_schema_id.name << "' and '"
-                << transform_schema_id.name << "' encoding=jsonschema\n";
+      if (!local_participant->defineSchema(pointcloud_schema_id, schema_mcap::kPointCloudJsonSchema)) {
+        throw std::runtime_error("failed to define schema '" + pointcloud_schema_id.name + "'");
+      }
+      if (!local_participant->defineSchema(transform_schema_id, schema_mcap::kFrameTransformJsonSchema)) {
+        throw std::runtime_error("failed to define schema '" + transform_schema_id.name + "'");
+      }
+      std::cout << "[publisher] defined schemas '" << pointcloud_schema_id.name << "' and '" << transform_schema_id.name
+                << "' encoding=jsonschema\n";
 
       DataTrackPublishOptions pointcloud_publish_options;
       pointcloud_publish_options.name = schema_mcap::kDataTrackName;
@@ -454,10 +453,8 @@ int main(int argc, char* argv[]) {
 
       auto pointcloud_publish_result = local_participant->publishDataTrack(pointcloud_publish_options);
       if (!pointcloud_publish_result) {
-        std::cerr << "[publisher] failed to publish point-cloud data track: "
-                  << schema_mcap::describeDataTrackError(pointcloud_publish_result.error()) << "\n";
-        livekit::shutdown();
-        return 1;
+        throw std::runtime_error("failed to publish point-cloud data track: " +
+                                 schema_mcap::describeDataTrackError(pointcloud_publish_result.error()));
       }
 
       DataTrackPublishOptions transform_publish_options;
@@ -467,10 +464,8 @@ int main(int argc, char* argv[]) {
 
       auto transform_publish_result = local_participant->publishDataTrack(transform_publish_options);
       if (!transform_publish_result) {
-        std::cerr << "[publisher] failed to publish transform data track: "
-                  << schema_mcap::describeDataTrackError(transform_publish_result.error()) << "\n";
-        livekit::shutdown();
-        return 1;
+        throw std::runtime_error("failed to publish transform data track: " +
+                                 schema_mcap::describeDataTrackError(transform_publish_result.error()));
       }
 
       auto pointcloud_track = pointcloud_publish_result.value();
@@ -496,17 +491,17 @@ int main(int argc, char* argv[]) {
 
         auto transform_push_result = transform_track->tryPush(transform_frame);
         if (!transform_push_result) {
-          std::cerr << "[publisher] failed to push transform frame: "
-                    << schema_mcap::describeDataTrackError(transform_push_result.error()) << "\n";
+          throw std::runtime_error("failed to push transform frame " + std::to_string(sequence) + ": " +
+                                   schema_mcap::describeDataTrackError(transform_push_result.error()));
         }
         auto pointcloud_push_result = pointcloud_track->tryPush(pointcloud_frame);
         if (!pointcloud_push_result) {
-          std::cerr << "[publisher] failed to push point-cloud frame: "
-                    << schema_mcap::describeDataTrackError(pointcloud_push_result.error()) << "\n";
-        } else if (transform_push_result && sequence % 10 == 0) {
+          throw std::runtime_error("failed to push point-cloud frame " + std::to_string(sequence) + ": " +
+                                   schema_mcap::describeDataTrackError(pointcloud_push_result.error()));
+        }
+        if (sequence % 10 == 0) {
           std::cout << "[publisher] frame=" << sequence << " points=" << input_points.size()
-                    << " payload_bytes=" << pointcloud_frame.payload.size() + transform_frame.payload.size()
-                    << "\n";
+                    << " payload_bytes=" << pointcloud_frame.payload.size() + transform_frame.payload.size() << "\n";
         }
 
         ++sequence;
