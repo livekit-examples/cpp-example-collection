@@ -12,6 +12,7 @@ etc.) without requiring users to build the SDK from source.
 | Example | Description |
 | --- | --- |
 | [`basic_room`](basic_room/) | Connects to a room and publishes synthetic audio and video tracks. |
+| [`capture_source`](capture_source/) | Demonstrates SDK-owned capture sources, currently with GStreamer test-pattern and webcam pipelines and room for additional backends. |
 | [`frame_metadata`](frame_metadata/) | Publishes and consumes video frames with frame metadata such as IDs, timestamps, and user data. |
 | [`hello_livekit/receiver`](hello_livekit/receiver/) | Subscribes to the sender example's video and data tracks. |
 | [`hello_livekit/sender`](hello_livekit/sender/) | Publishes synthetic video and data for a paired receiver example. |
