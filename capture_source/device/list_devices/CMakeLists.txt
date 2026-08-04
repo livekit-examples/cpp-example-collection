@@ -12,5 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_subdirectory(device)
-add_subdirectory(gstreamer)
+add_executable(LiveKitDeviceCaptureListDevices main.cpp)
+target_link_libraries(LiveKitDeviceCaptureListDevices PRIVATE livekit_device_capture_example_common)
+livekit_copy_windows_runtime_dlls(LiveKitDeviceCaptureListDevices)

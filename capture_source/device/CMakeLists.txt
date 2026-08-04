@@ -12,5 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_subdirectory(device)
-add_subdirectory(gstreamer)
+add_library(livekit_device_capture_example_common STATIC
+  common/device_capture_example.cpp
+)
+
+target_include_directories(livekit_device_capture_example_common PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/common
+)
+target_link_libraries(livekit_device_capture_example_common PUBLIC ${LIVEKIT_CORE_TARGET})
+
+add_subdirectory(list_devices)
+add_subdirectory(camera)

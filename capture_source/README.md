@@ -9,21 +9,26 @@ leak into unrelated examples.
 
 | Source family | Description |
 | --- | --- |
+| [`device`](device/) | Platform-native camera capture (AVFoundation on macOS, V4L2 on Linux) with device selection and format negotiation. |
 | [`gstreamer`](gstreamer/) | SDK-owned GStreamer pipelines that publish pre-encoded video without sending each frame across the C++/Rust FFI boundary. |
 
-The GStreamer family currently includes an animated test pipeline and a
+The device family includes a device enumerator and a camera publisher. The
+GStreamer family currently includes an animated test pipeline and a
 default-webcam pipeline.
+
+Note that `gstreamer/webcam` also publishes a camera, but through a GStreamer
+pipeline that encodes on the CPU. Prefer `device/camera` for cameras: it uses
+the platform capture stack directly and lets WebRTC own encoding.
 
 ## Adding more source families
 
-Future capture implementations should be added alongside `gstreamer/` and
-named for the technology they exercise. Expected examples include:
+Future capture implementations should be added alongside `device/` and
+`gstreamer/` and named for the technology they exercise. Expected examples
+include:
 
-- a native V4L2 source that reads directly from `/dev/video*` without a
-  GStreamer pipeline;
 - a dedicated RTSP source that owns connection, depacketization, and capture
   lifecycle behavior;
-- additional platform-native camera or hardware capture backends.
+- additional platform-native hardware capture backends.
 
 An RTSP or V4L2 pipeline implemented through GStreamer belongs under
 `gstreamer/`; an SDK-native implementation belongs in its own sibling source
