@@ -21,5 +21,10 @@ target_include_directories(livekit_device_capture_example_common PUBLIC
 )
 target_link_libraries(livekit_device_capture_example_common PUBLIC ${LIVEKIT_CORE_TARGET})
 
+# Collect all device capture example executables in this directory rather than
+# one directory per example. The $<1:...> wrapper keeps multi-config generators
+# from appending a per-config subdirectory.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_CURRENT_BINARY_DIR}>")
+
 add_subdirectory(list_devices)
 add_subdirectory(camera)
