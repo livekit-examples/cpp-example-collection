@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-// Sandbox token source: use LiveKit Cloud's sandbox token server for quick
+// Development token source: use LiveKit Cloud's development token server for quick
 // local development. Do not use in production.
 //
-// The sandbox ID is read from the environment (never hard-coded) so this
-// example does not link a personal sandbox into source control.
+// The token server ID is read from the environment (never hard-coded) so this
+// example does not link a personal token server ID into source control.
 //
 // Environment:
-//   LIVEKIT_SANDBOX_ID      Sandbox identifier from LiveKit Cloud (required)
+//   LIVEKIT_TOKEN_SERVER_ID Token server identifier from LiveKit Cloud (required)
 //   LIVEKIT_AGENT_NAME      Optional registered agent to dispatch into the room
 //   LIVEKIT_AGENT_METADATA  Optional metadata passed to the dispatched agent
 
@@ -37,15 +37,15 @@ namespace {
 
 using namespace token_source_example;
 
-bool sandboxTokenSourceConnect() {
-  std::string sandbox_id;
-  if (!requireEnv("LIVEKIT_SANDBOX_ID", sandbox_id)) {
+bool DevelopmentTokenSourceConnect() {
+  std::string token_server_id;
+  if (!requireEnv("LIVEKIT_TOKEN_SERVER_ID", token_server_id)) {
     return false;
   }
 
   // POSTs to cloud-api.livekit.io/api/v2/sandbox/connection-details with
-  // X-Sandbox-ID set from LIVEKIT_SANDBOX_ID.
-  auto token_source = livekit::SandboxTokenSource::create(sandbox_id);
+  // X-Sandbox-ID set from LIVEKIT_TOKEN_SERVER_ID.
+  auto token_source = livekit::DevelopmentTokenSource::create(token_server_id);
 
   livekit::TokenRequestOptions request_options;
   request_options.participant_identity = "robot-a";
@@ -57,7 +57,7 @@ bool sandboxTokenSourceConnect() {
     if (const std::string agent_metadata = getenvOrEmpty("LIVEKIT_AGENT_METADATA"); !agent_metadata.empty()) {
       request_options.agent_metadata = agent_metadata;
     }
-    std::cout << "Requesting sandbox token with agent dispatch: agent_name=" << *request_options.agent_name << "\n";
+    std::cout << "Requesting development token with agent dispatch: agent_name=" << *request_options.agent_name << "\n";
   }
   const auto credentials = token_source->fetch(request_options).get();
   if (!credentials) {
@@ -72,7 +72,7 @@ bool sandboxTokenSourceConnect() {
     std::cerr << "Failed to connect to room\n";
     return false;
   }
-  std::cout << "Connected to room: " << room.roomInfo().name << " (sandbox token source)\n";
+  std::cout << "Connected to room: " << room.roomInfo().name << " (development token source)\n";
 
   return runConnectedSession(room);
 }
@@ -81,7 +81,7 @@ bool sandboxTokenSourceConnect() {
 
 int main() {
   livekit::initialize(livekit::LogLevel::Info);
-  const bool ok = sandboxTokenSourceConnect();
+  const bool ok = DevelopmentTokenSourceConnect();
   livekit::shutdown();
   return ok ? 0 : 1;
 }

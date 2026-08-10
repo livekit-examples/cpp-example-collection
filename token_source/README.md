@@ -18,9 +18,9 @@ disconnects.
 | --- | --- | --- |
 | `LiteralTokenSource` | `token_source_literal.cpp` | You already have a URL + JWT (minted out of band, e.g. `lk token create`). The SDK consumes them as-is. |
 | `EndpointTokenSource` | `token_source_endpoint.cpp` | Recommended for production. The SDK POSTs request options to your backend token endpoint, which returns the URL + a fresh JWT. API keys stay server-side. |
-| `SandboxTokenSource` | `token_source_sandbox.cpp` | Local development only. Uses LiveKit Cloud's sandbox token server. **Not for production.** |
+| `DevelopmentTokenSource` | `token_source_development.cpp` | Local development only. Uses LiveKit Cloud's development token server. **Not for production.** |
 | `CustomTokenSource` | `token_source_custom.cpp` | You have an internal auth/token system. Plug in your own async callback that returns credentials. |
-| `CachingTokenSource` | `token_source_caching.cpp` | A decorator that adds JWT-aware caching around any configurable source (endpoint/sandbox/custom) to cut down on fetch calls. |
+| `CachingTokenSource` | `token_source_caching.cpp` | A decorator that adds JWT-aware caching around any configurable source (endpoint/development/custom) to cut down on fetch calls. |
 
 `LiteralTokenSource` is *fixed* (no per-call options); the others are
 *configurable* and accept
@@ -29,7 +29,7 @@ disconnects.
 
 ## Configuring the Examples
 
-All inputs come from environment variables, so no secrets or sandbox IDs are committed to source.
+All inputs come from environment variables, so no secrets or token server IDs are committed to source.
 
 | Variable | Used by | Notes |
 | --- | --- | --- |
@@ -38,9 +38,9 @@ All inputs come from environment variables, so no secrets or sandbox IDs are com
 | `LIVEKIT_TOKEN_ENDPOINT` | endpoint, caching | Token endpoint URL. Default `http://127.0.0.1:3000/createToken`. |
 | `LIVEKIT_TOKEN_ENDPOINT_METHOD` | endpoint, caching | Optional HTTP method (default `POST`). |
 | `LIVEKIT_TOKEN_ENDPOINT_HEADERS` | endpoint, caching | Optional newline-separated `Name: Value` headers. |
-| `LIVEKIT_SANDBOX_ID` | sandbox | Required. Sandbox ID from LiveKit Cloud. |
-| `LIVEKIT_AGENT_NAME` | sandbox | Optional agent to dispatch into the room. |
-| `LIVEKIT_AGENT_METADATA` | sandbox | Optional metadata for the dispatched agent. |
+| `LIVEKIT_TOKEN_SERVER_ID` | development | Required. Development token server ID from LiveKit Cloud. |
+| `LIVEKIT_AGENT_NAME` | development | Optional agent to dispatch into the room. |
+| `LIVEKIT_AGENT_METADATA` | development | Optional metadata for the dispatched agent. |
 
 These examples require LiveKit C++ SDK **v1.3.0** or newer. Build them with the
 rest of the repo — see the root [README](../README.md#building-the-examples).
@@ -78,14 +78,13 @@ cd <path-to>/token-server-node
 LIVEKIT_URL=ws://localhost:7880 LIVEKIT_API_KEY=devkey LIVEKIT_API_SECRET=secret PORT=3000 pnpm start
 ```
 
-For sandbox, create a **Token Server** sandbox in [LiveKit Cloud](https://cloud.livekit.io)
-(Sandbox → create from the token-server template), then copy the sandbox ID
+For development, enable the **Development Token Server** in [LiveKit Cloud](https://cloud.livekit.io), then copy the token server ID
 (`token-server-xxxxxx`). See the
-[sandbox token server docs](https://docs.livekit.io/frontends/build/authentication/sandbox-token-server/)
+[development token server docs](https://docs.livekit.io/frontends/build/authentication/sandbox-token-server/)
 for setup details. Do not use this in production.
 
 ```bash
-export LIVEKIT_SANDBOX_ID=token-server-xxxxxx
+export LIVEKIT_TOKEN_SERVER_ID=token-server-xxxxxx
 # optional: dispatch a registered agent into the room with metadata
 # export LIVEKIT_AGENT_NAME=my-agent
 # export LIVEKIT_AGENT_METADATA='{"greeting": "hello from cpp"}'
@@ -110,11 +109,11 @@ export LIVEKIT_TOKEN_ENDPOINT=http://127.0.0.1:3000/createToken
 ```
 
 ```bash
-# Sandbox: development-only, ID from the environment
-export LIVEKIT_SANDBOX_ID=<your-sandbox-id>
+# Development: development-only, ID from the environment
+export LIVEKIT_TOKEN_SERVER_ID=<your-token-server-id>
 export LIVEKIT_AGENT_NAME=<your-agent-name>         # optional
 export LIVEKIT_AGENT_METADATA=<your-agent-metadata> # optional
-./build/token_source/token_source_sandbox
+./build/token_source/token_source_development
 ```
 
 ```bash

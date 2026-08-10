@@ -20,11 +20,11 @@ get_filename_component(_lk_cmake_dir "${LiveKit_DIR}" DIRECTORY)  # .../lib/cmak
 get_filename_component(_lk_lib_dir  "${_lk_cmake_dir}" DIRECTORY) # .../lib
 
 set(_token_source_examples
-  token_source_literal   token_source_literal.cpp
-  token_source_endpoint  token_source_endpoint.cpp
-  token_source_sandbox   token_source_sandbox.cpp
-  token_source_custom    token_source_custom.cpp
-  token_source_caching   token_source_caching.cpp
+  token_source_literal      token_source_literal.cpp
+  token_source_endpoint     token_source_endpoint.cpp
+  token_source_development  token_source_development.cpp
+  token_source_custom       token_source_custom.cpp
+  token_source_caching      token_source_caching.cpp
 )
 
 list(LENGTH _token_source_examples _count)
