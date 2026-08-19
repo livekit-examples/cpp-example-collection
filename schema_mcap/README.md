@@ -19,27 +19,27 @@ publisher, and records the incoming frames to an MCAP file.
 
 ```text
 ┌────────────── Publisher ──────────────┐       ┌──────── LiveKit room ────────┐
-│                                      │       │                              │
-│ defineSchema(...)                    │──────►│ Participant data blob        │
-│  • foxglove.PointCloud               │       │  • JSON Schema definitions   │
-│  • foxglove.FrameTransform           │       │                              │
-│                                      │       │                              │
-│ publishDataTrack(...)                │──────►│ Data tracks                  │
-│  • pointcloud-json                   │       │  • schema + encoding IDs     │
-│  • frame-transform-json              │       │  • synchronized JSON frames │
-└──────────────────────────────────────┘       └──────────────┬───────────────┘
-                                                            │
-                              ┌─────────────────────────────┘
+│                                       │       │                              │
+│ defineSchema(...)                     │──────►│ Participant data blob        │
+│  • foxglove.PointCloud                │       │  • JSON Schema definitions   │
+│  • foxglove.FrameTransform            │       │                              │
+│                                       │       │                              │
+│ publishDataTrack(...)                 │──────►│ Data tracks                  │
+│  • pointcloud-json                    │       │  • schema + encoding IDs     │
+│  • frame-transform-json               │       │  • synchronized JSON frames  │
+└───────────────────────────────────────┘       └──────────────┬───────────────┘
+                                                               │
+                              ┌────────────────────────────────┘
                               ▼
-┌─────────────── Recorder ──────────────┐
-│ getSchema(...) + subscribe() / read() │
-│                                      │
-│ MCAP schemas   PointCloud, Transform │
-│ MCAP channels  /pointcloud, /tf      │
-│ MCAP messages  synchronized frames   │
-└───────────────────┬──────────────────┘
-                    ▼
-      livekit_pointcloud_<date>.mcap
+          ┌─────────────── Recorder ──────────────┐
+          │ getSchema(...) + subscribe() / read() │
+          │                                       │
+          │ MCAP schemas   PointCloud, Transform  │
+          │ MCAP channels  /pointcloud, /tf       │
+          │ MCAP messages  synchronized frames    │
+          └───────────────────┬───────────────────┘
+                              ▼
+                livekit_pointcloud_<date>.mcap
 ```
 
 The recorder writes files named like:
