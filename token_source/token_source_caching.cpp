@@ -15,7 +15,7 @@
  */
 
 // Caching token source: a decorator that adds JWT-aware caching to any
-// configurable token source (endpoint, sandbox, or custom).
+// configurable token source (endpoint, development, or custom).
 //
 // Repeated fetches for the same request options reuse the cached token until it
 // nears expiry or you call invalidate() to drop the cached credentials, cutting
