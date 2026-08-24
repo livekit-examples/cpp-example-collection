@@ -80,7 +80,7 @@ LIVEKIT_URL=ws://localhost:7880 LIVEKIT_API_KEY=devkey LIVEKIT_API_SECRET=secret
 
 For development, enable the **Development Token Server** in [LiveKit Cloud](https://cloud.livekit.io), then copy the token server ID
 (`token-server-xxxxxx`). See the
-[development token server docs](https://docs.livekit.io/frontends/build/authentication/sandbox-token-server/)
+[development token server docs](https://docs.livekit.io/frontends/build/authentication/development-token-server/)
 for setup details. Do not use this in production.
 
 ```bash

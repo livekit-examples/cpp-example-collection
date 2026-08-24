@@ -37,7 +37,7 @@ namespace {
 
 using namespace token_source_example;
 
-bool DevelopmentTokenSourceConnect() {
+bool developmentTokenSourceConnect() {
   std::string token_server_id;
   if (!requireEnv("LIVEKIT_TOKEN_SERVER_ID", token_server_id)) {
     return false;
@@ -81,7 +81,7 @@ bool DevelopmentTokenSourceConnect() {
 
 int main() {
   livekit::initialize(livekit::LogLevel::Info);
-  const bool ok = DevelopmentTokenSourceConnect();
+  const bool ok = developmentTokenSourceConnect();
   livekit::shutdown();
   return ok ? 0 : 1;
 }
