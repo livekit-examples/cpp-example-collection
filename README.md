@@ -108,6 +108,6 @@ Prebuilt SDKs are downloaded automatically for:
 
 * Windows: x64
 * macOS: x64, arm64 (Apple Silicon)
-* Linux: x64
+* Linux: Ubuntu 24.04 x64
 
 If no matching SDK is available for your platform, CMake configuration will fail with a clear error.
