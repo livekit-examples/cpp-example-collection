@@ -12,6 +12,8 @@ etc.) without requiring users to build the SDK from source.
 | Example | Description |
 | --- | --- |
 | [`basic_room`](basic_room/) | Connects to a room and publishes synthetic audio and video tracks. |
+| [`data_track_dynacast/publisher`](data_track_dynacast/publisher/) | Pushes a data frame at 4 Hz with dynacast on and prints each success or failure. |
+| [`data_track_dynacast/subscriber`](data_track_dynacast/subscriber/) | Subscribes to the publisher's data track and toggles the subscription every 3 seconds. |
 | [`frame_metadata`](frame_metadata/) | Publishes and consumes video frames with frame metadata such as IDs, timestamps, and user data. |
 | [`hello_livekit/receiver`](hello_livekit/receiver/) | Subscribes to the sender example's video and data tracks. |
 | [`hello_livekit/sender`](hello_livekit/sender/) | Publishes synthetic video and data for a paired receiver example. |
